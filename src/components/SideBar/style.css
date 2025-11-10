@@ -1,0 +1,131 @@
+.sidebar-container {
+  width: 200px;
+  height: 100%;
+  background-color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  padding: 16px 20px;
+  gap: 8px;
+  border-bottom: 1px solid #f0f0f0;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.2s;
+}
+
+.sidebar-header:hover {
+  background-color: #fafafa;
+}
+
+.sidebar-header-icon {
+  font-size: 18px;
+  color: #1890ff;
+}
+
+.sidebar-header-text {
+  flex: 1;
+  color: #1890ff;
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.sidebar-header-dropdown {
+  font-size: 12px;
+  color: #1890ff;
+  cursor: pointer;
+  transition: transform 0.3s ease;
+}
+
+.sidebar-header-dropdown.expanded {
+  transform: rotate(0deg);
+}
+
+.sidebar-header-dropdown.collapsed {
+  transform: rotate(-90deg);
+}
+
+.sidebar-menu {
+  flex: 1;
+  border-right: none;
+  background-color: #ffffff;
+  padding: 0;
+  animation: slideDown 0.3s ease;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+}
+
+.sidebar-menu .ant-menu {
+  border-radius: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.sidebar-menu .ant-menu-item,
+.sidebar-menu .ant-menu-item-active,
+.sidebar-menu .ant-menu-item-selected {
+  border-radius: 0 !important;
+  margin: 0 !important;
+}
+
+.sidebar-menu .ant-menu-item:not(.ant-menu-item-selected)::before {
+  display: none !important;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.sidebar-menu .ant-menu-item {
+  margin: 0 !important;
+  padding: 12px 20px !important;
+  height: auto;
+  line-height: 1.5;
+  color: #595959;
+  background-color: #ffffff;
+  border-left: none;
+  border-radius: 0 !important;
+  position: relative;
+  width: 100% !important;
+}
+
+.sidebar-menu .ant-menu-item:hover {
+  background-color: #f5f5f5 !important;
+  color: #1890ff;
+  border-radius: 0 !important;
+}
+
+.sidebar-menu .ant-menu-item-selected {
+  background-color: #f0f0f0 !important;
+  color: #1890ff !important;
+  margin-left: -3px;
+  padding-left: 17px !important;
+  border-radius: 0 !important;
+}
+
+.sidebar-menu .ant-menu-item-selected::before {
+  content: "";
+  position: absolute;
+  left: -3px;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background-color: #1890ff;
+}
+
+.sidebar-menu .ant-menu-item::after {
+  display: none;
+}
+
