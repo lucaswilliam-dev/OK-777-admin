@@ -130,13 +130,13 @@ const initialState = {
     },
   },
 
-  // Game Manager (for future use)
+  // Game Manager
   gameManager: {
     dataSource: [],
     pagination: {
-      currentPage: 1,
+      currentPage: 51,
       pageSize: 10,
-      totalItems: 0,
+      totalItems: 658,
     },
     modals: {
       isAddEditModalOpen: false,
@@ -146,29 +146,111 @@ const initialState = {
     },
   },
 
-  // Game Store (for future use)
+  // Game Store
   gameStore: {
-    dataSource: [],
+    dataSource: [
+      {
+        key: "1",
+        id: 23,
+        name: "Slot Game 1",
+        provider: "ag",
+        category: "Live",
+        pingMs: 60,
+        pingStatus: "online",
+        inStore: false,
+        state: true,
+        createTime: "2021-02-28 10:30",
+      },
+      {
+        key: "2",
+        id: 25,
+        name: "Slot Game 2",
+        provider: "allbet",
+        category: "Slot",
+        pingMs: 110,
+        pingStatus: "online",
+        inStore: true,
+        state: true,
+        createTime: "2021-02-28 10:30",
+      },
+      {
+        key: "3",
+        id: 46,
+        name: "Slot Game 3",
+        provider: "ap",
+        category: "Lottery",
+        pingMs: 300,
+        pingStatus: "online",
+        inStore: true,
+        state: true,
+        createTime: "2021-02-28 10:30",
+      },
+      {
+        key: "4",
+        id: 577,
+        name: "Slot Game 4",
+        provider: "bbin",
+        category: "Sports",
+        pingMs: undefined,
+        pingStatus: "offline",
+        inStore: false,
+        state: true,
+        createTime: "2021-02-28 10:30",
+      },
+      {
+        key: "5",
+        id: 578,
+        name: "Slot Game 5",
+        provider: "bg",
+        category: "Fishing",
+        pingMs: undefined,
+        pingStatus: "offline",
+        inStore: true,
+        state: true,
+        createTime: "2021-02-28 10:30",
+      },
+    ],
     pagination: {
-      currentPage: 1,
+      currentPage: 51,
       pageSize: 10,
-      totalItems: 0,
+      totalItems: 658,
     },
     modals: {
       isAddEditModalOpen: false,
       isDeleteModalOpen: false,
+      isUpdateModalOpen: false,
+      isPingModalOpen: false,
+      isAddModalOpen: false,
+      isMoveModalOpen: false,
       editingItem: null,
       itemToDelete: null,
     },
   },
 
-  // Game Tags (for future use)
+  // Game Tags
   gameTags: {
-    dataSource: [],
+    dataSource: [
+      {
+        key: "1",
+        id: 23,
+        name: "Hot",
+        icon: "HOT",
+        state: true,
+        createTime: "2021-02-28 10:30",
+      },
+      {
+        key: "2",
+        id: 25,
+        name: "New",
+        icon: "NEW",
+        state: true,
+        createTime: "2021-02-28 10:30",
+      },
+    ],
     pagination: {
       currentPage: 1,
       pageSize: 10,
-      totalItems: 0,
+      totalItems: 2,
     },
     modals: {
       isAddEditModalOpen: false,
@@ -488,6 +570,304 @@ export const AppProvider = ({ children }) => {
     });
   }, []);
 
+  // Game Store actions
+  const updateGameStoreDataSource = useCallback((dataSource) => {
+    setState((prev) => ({
+      ...prev,
+      gameStore: {
+        ...prev.gameStore,
+        dataSource,
+      },
+    }));
+  }, []);
+
+  const updateGameStoreItem = useCallback((key, updates) => {
+    setState((prev) => ({
+      ...prev,
+      gameStore: {
+        ...prev.gameStore,
+        dataSource: prev.gameStore.dataSource.map((item) =>
+          item.key === key ? { ...item, ...updates } : item
+        ),
+      },
+    }));
+  }, []);
+
+  const addGameStoreItem = useCallback((newItem) => {
+    setState((prev) => ({
+      ...prev,
+      gameStore: {
+        ...prev.gameStore,
+        dataSource: [...prev.gameStore.dataSource, newItem],
+        pagination: {
+          ...prev.gameStore.pagination,
+          totalItems: prev.gameStore.pagination.totalItems + 1,
+        },
+      },
+    }));
+  }, []);
+
+  const deleteGameStoreItem = useCallback((key) => {
+    setState((prev) => ({
+      ...prev,
+      gameStore: {
+        ...prev.gameStore,
+        dataSource: prev.gameStore.dataSource.filter(
+          (item) => item.key !== key
+        ),
+        pagination: {
+          ...prev.gameStore.pagination,
+          totalItems: prev.gameStore.pagination.totalItems - 1,
+        },
+      },
+    }));
+  }, []);
+
+  const setGameStorePagination = useCallback((pagination) => {
+    setState((prev) => ({
+      ...prev,
+      gameStore: {
+        ...prev.gameStore,
+        pagination: {
+          ...prev.gameStore.pagination,
+          ...pagination,
+        },
+      },
+    }));
+  }, []);
+
+  const setGameStoreCurrentPage = useCallback((currentPage) => {
+    setState((prev) => ({
+      ...prev,
+      gameStore: {
+        ...prev.gameStore,
+        pagination: {
+          ...prev.gameStore.pagination,
+          currentPage,
+        },
+      },
+    }));
+  }, []);
+
+  const openGameStoreModal = useCallback((modalType, editingItem = null, itemToDelete = null) => {
+    setState((prev) => ({
+      ...prev,
+      gameStore: {
+        ...prev.gameStore,
+        modals: {
+          ...prev.gameStore.modals,
+          [modalType]: true,
+          editingItem: editingItem || prev.gameStore.modals.editingItem,
+          itemToDelete: itemToDelete || prev.gameStore.modals.itemToDelete,
+        },
+      },
+    }));
+  }, []);
+
+  const closeGameStoreModal = useCallback((modalType) => {
+    setState((prev) => ({
+      ...prev,
+      gameStore: {
+        ...prev.gameStore,
+        modals: {
+          ...prev.gameStore.modals,
+          [modalType]: false,
+          editingItem: modalType === "isAddEditModalOpen" ? null : prev.gameStore.modals.editingItem,
+          itemToDelete: modalType === "isDeleteModalOpen" ? null : prev.gameStore.modals.itemToDelete,
+        },
+      },
+    }));
+  }, []);
+
+  // Game Tags actions
+  const updateGameTagsDataSource = useCallback((dataSource) => {
+    setState((prev) => ({
+      ...prev,
+      gameTags: {
+        ...prev.gameTags,
+        dataSource,
+      },
+    }));
+  }, []);
+
+  const updateGameTagsItem = useCallback((key, updates) => {
+    setState((prev) => ({
+      ...prev,
+      gameTags: {
+        ...prev.gameTags,
+        dataSource: prev.gameTags.dataSource.map((item) =>
+          item.key === key ? { ...item, ...updates } : item
+        ),
+      },
+    }));
+  }, []);
+
+  const addGameTagsItem = useCallback((newItem) => {
+    setState((prev) => ({
+      ...prev,
+      gameTags: {
+        ...prev.gameTags,
+        dataSource: [...prev.gameTags.dataSource, newItem],
+        pagination: {
+          ...prev.gameTags.pagination,
+          totalItems: prev.gameTags.pagination.totalItems + 1,
+        },
+      },
+    }));
+  }, []);
+
+  const deleteGameTagsItem = useCallback((key) => {
+    setState((prev) => ({
+      ...prev,
+      gameTags: {
+        ...prev.gameTags,
+        dataSource: prev.gameTags.dataSource.filter(
+          (item) => item.key !== key
+        ),
+        pagination: {
+          ...prev.gameTags.pagination,
+          totalItems: prev.gameTags.pagination.totalItems - 1,
+        },
+      },
+    }));
+  }, []);
+
+  const setGameTagsPagination = useCallback((pagination) => {
+    setState((prev) => ({
+      ...prev,
+      gameTags: {
+        ...prev.gameTags,
+        pagination: {
+          ...prev.gameTags.pagination,
+          ...pagination,
+        },
+      },
+    }));
+  }, []);
+
+  const setGameTagsCurrentPage = useCallback((currentPage) => {
+    setState((prev) => ({
+      ...prev,
+      gameTags: {
+        ...prev.gameTags,
+        pagination: {
+          ...prev.gameTags.pagination,
+          currentPage,
+        },
+      },
+    }));
+  }, []);
+
+  const openGameTagsAddEditModal = useCallback((editingItem = null) => {
+    setState((prev) => ({
+      ...prev,
+      gameTags: {
+        ...prev.gameTags,
+        modals: {
+          ...prev.gameTags.modals,
+          isAddEditModalOpen: true,
+          editingItem,
+        },
+      },
+    }));
+  }, []);
+
+  const closeGameTagsAddEditModal = useCallback(() => {
+    setState((prev) => ({
+      ...prev,
+      gameTags: {
+        ...prev.gameTags,
+        modals: {
+          ...prev.gameTags.modals,
+          isAddEditModalOpen: false,
+          editingItem: null,
+        },
+      },
+    }));
+  }, []);
+
+  const openGameTagsDeleteModal = useCallback((itemToDelete = null) => {
+    setState((prev) => ({
+      ...prev,
+      gameTags: {
+        ...prev.gameTags,
+        modals: {
+          ...prev.gameTags.modals,
+          isDeleteModalOpen: true,
+          itemToDelete,
+        },
+      },
+    }));
+  }, []);
+
+  const closeGameTagsDeleteModal = useCallback(() => {
+    setState((prev) => ({
+      ...prev,
+      gameTags: {
+        ...prev.gameTags,
+        modals: {
+          ...prev.gameTags.modals,
+          isDeleteModalOpen: false,
+          itemToDelete: null,
+        },
+      },
+    }));
+  }, []);
+
+  const confirmDeleteGameTagsItem = useCallback(() => {
+    setState((prev) => {
+      const itemToDelete = prev.gameTags.modals.itemToDelete;
+      if (itemToDelete) {
+        return {
+          ...prev,
+          gameTags: {
+            ...prev.gameTags,
+            dataSource: prev.gameTags.dataSource.filter(
+              (item) => item.key !== itemToDelete.key
+            ),
+            pagination: {
+              ...prev.gameTags.pagination,
+              totalItems: prev.gameTags.pagination.totalItems - 1,
+            },
+            modals: {
+              ...prev.gameTags.modals,
+              isDeleteModalOpen: false,
+              itemToDelete: null,
+            },
+          },
+        };
+      }
+      return prev;
+    });
+  }, []);
+
+  // Game Manager actions
+  const setGameManagerPagination = useCallback((pagination) => {
+    setState((prev) => ({
+      ...prev,
+      gameManager: {
+        ...prev.gameManager,
+        pagination: {
+          ...prev.gameManager.pagination,
+          ...pagination,
+        },
+      },
+    }));
+  }, []);
+
+  const setGameManagerCurrentPage = useCallback((currentPage) => {
+    setState((prev) => ({
+      ...prev,
+      gameManager: {
+        ...prev.gameManager,
+        pagination: {
+          ...prev.gameManager.pagination,
+          currentPage,
+        },
+      },
+    }));
+  }, []);
+
   // Generic actions for other game modules (can be extended)
   const updateModuleDataSource = useCallback((moduleName, dataSource) => {
     setState((prev) => ({
@@ -573,6 +953,33 @@ export const AppProvider = ({ children }) => {
     openGameProviderDeleteModal,
     closeGameProviderDeleteModal,
     confirmDeleteGameProviderItem,
+
+    // Game Store actions
+    updateGameStoreDataSource,
+    updateGameStoreItem,
+    addGameStoreItem,
+    deleteGameStoreItem,
+    setGameStorePagination,
+    setGameStoreCurrentPage,
+    openGameStoreModal,
+    closeGameStoreModal,
+
+    // Game Tags actions
+    updateGameTagsDataSource,
+    updateGameTagsItem,
+    addGameTagsItem,
+    deleteGameTagsItem,
+    setGameTagsPagination,
+    setGameTagsCurrentPage,
+    openGameTagsAddEditModal,
+    closeGameTagsAddEditModal,
+    openGameTagsDeleteModal,
+    closeGameTagsDeleteModal,
+    confirmDeleteGameTagsItem,
+
+    // Game Manager actions
+    setGameManagerPagination,
+    setGameManagerCurrentPage,
 
     // Generic module actions
     updateModuleDataSource,

@@ -112,11 +112,6 @@ const Table = () => {
     openGameCategoryAddEditModal();
   };
 
-  const showDeleteModal = () => {
-    console.log("Delete modal triggered");
-    openGameCategoryDeleteModal();
-  };
-
   const handleDeleteOk = () => {
     console.log("Delete confirmed");
     confirmDeleteGameCategoryItem();

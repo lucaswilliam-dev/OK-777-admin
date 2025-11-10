@@ -5,6 +5,24 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { useAppContext } from "../../contexts";
 import "./style.css";
 
+// Map menu keys to routes
+const keyToRouteMap = {
+  "game-category": "/",
+  "game-provider": "/game-provider",
+  "game-manager": "/game-manager",
+  "game-store": "/game-store",
+  "game-tags": "/game-tags",
+};
+
+// Map routes to menu keys
+const routeToKeyMap = {
+  "/": "game-category",
+  "/game-provider": "game-provider",
+  "/game-manager": "game-manager",
+  "/game-store": "game-store",
+  "/game-tags": "game-tags",
+};
+
 const SideBar = () => {
   const {
     state,
@@ -15,24 +33,6 @@ const SideBar = () => {
   const { selectedKey, isMenuExpanded } = state.sidebar;
   const navigate = useNavigate();
   const location = useLocation();
-
-  // Map menu keys to routes
-  const keyToRouteMap = {
-    "game-category": "/",
-    "game-provider": "/game-provider",
-    "game-manager": "/game-manager",
-    "game-store": "/game-store",
-    "game-tags": "/game-tags",
-  };
-
-  // Map routes to menu keys
-  const routeToKeyMap = {
-    "/": "game-category",
-    "/game-provider": "game-provider",
-    "/game-manager": "game-manager",
-    "/game-store": "game-store",
-    "/game-tags": "game-tags",
-  };
 
   // Sync selectedKey with current route
   useEffect(() => {

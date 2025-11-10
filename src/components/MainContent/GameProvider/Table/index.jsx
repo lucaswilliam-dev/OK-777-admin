@@ -22,6 +22,9 @@ const Table = () => {
   const { currentPage, pageSize, totalItems } = pagination;
   const { isAddEditModalOpen, isDeleteModalOpen, editingItem } = modals;
 
+  // Use totalItems for pagination
+  const totalCount = totalItems || 658;
+
   const handleStateChange = (record, checked) => {
     updateGameProviderItem(record.key, { state: checked });
   };
@@ -194,10 +197,10 @@ const Table = () => {
       <div className="table-pagination">
         <div></div>
         <div className="main-pagination">
-          <div>Total {"658"}</div>
+          <div>Total {totalCount}</div>
           <Pagination
             current={currentPage}
-            total={658}
+            total={totalCount}
             pageSize={pageSize}
             onChange={handlePageChange}
             showSizeChanger={false}

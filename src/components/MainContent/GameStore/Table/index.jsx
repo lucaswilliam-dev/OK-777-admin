@@ -13,26 +13,37 @@ import "./style.css";
 const Table = () => {
   const {
     state,
-    updateGameCategoryItem,
-    addGameCategoryItem,
-    setGameCategoryCurrentPage,
-    openGameCategoryAddEditModal,
-    closeGameCategoryAddEditModal,
-    openGameCategoryDeleteModal,
-    closeGameCategoryDeleteModal,
-    confirmDeleteGameCategoryItem,
+    updateGameStoreItem,
+    addGameStoreItem,
+    deleteGameStoreItem,
+    setGameStoreCurrentPage,
+    openGameStoreModal,
+    closeGameStoreModal,
   } = useAppContext();
 
-  const { dataSource, pagination, modals } = state.gameCategory;
+  const { dataSource, pagination, modals } = state.gameStore;
   const { currentPage, pageSize, totalItems } = pagination;
-  const { isAddEditModalOpen, isDeleteModalOpen, editingItem } = modals;
+  const {
+    isAddEditModalOpen,
+    isDeleteModalOpen,
+    isUpdateModalOpen,
+    isPingModalOpen,
+    isAddModalOpen,
+    isMoveModalOpen,
+    editingItem,
+    itemToDelete,
+  } = modals;
 
   const [gameName, setGameName] = useState("");
   const [category, setCategory] = useState("All");
   const [provider, setProvider] = useState("All");
-  const [tags, setTags] = useState(["Hot", "New"]);
-  const [dateRange, setDateRange] = useState(null);
-  const [visibility, setVisibility] = useState(["EN", "ZH"]);
+  const [tags] = useState(["Hot", "New"]);
+  const [dateRange] = useState(null);
+  const [visibility] = useState(["EN", "ZH"]);
+
+  // const [tags, setTags] = useState(["Hot", "New"]);
+  // const [dateRange, setDateRange] = useState(null);
+  // const [visibility, setVisibility] = useState(["EN", "ZH"]);
 
   const handleSearch = () => {
     console.log("Search with filters:", {
@@ -48,29 +59,14 @@ const Table = () => {
 
   // Build table data with provider/category/ping/status fallbacks to ensure cells have values
   const tableData = useMemo(() => {
-    const providerCycle = ["ag", "allbet", "ap", "bbin", "bg"];
-    const categoryCycle = ["Live", "Slot", "Lottery", "Sports", "Fishing"];
-    const pingCycle = [60, 110, 300, undefined, undefined];
-    const pingStatusCycle = [
-      "online",
-      "online",
-      "online",
-      "offline",
-      "offline",
-    ];
-    const inStoreCycle = [false, true, true, false, true];
-    return (dataSource || []).map((item, idx) => {
-      const i = idx % providerCycle.length;
-      return {
-        ...item,
-        provider: item.provider ?? providerCycle[i],
-        category: item.category ?? categoryCycle[i],
-        pingMs: typeof item.pingMs === "number" ? item.pingMs : pingCycle[i],
-        pingStatus: item.pingStatus ?? pingStatusCycle[i],
-        inStore:
-          typeof item.inStore === "boolean" ? item.inStore : inStoreCycle[i],
-      };
-    });
+    return (dataSource || []).map((item) => ({
+      ...item,
+      provider: item.provider || "-",
+      category: item.category || "-",
+      pingMs: item.pingMs,
+      pingStatus: item.pingStatus || "offline",
+      inStore: typeof item.inStore === "boolean" ? item.inStore : false,
+    }));
   }, [dataSource]);
 
   const columns = [
@@ -156,7 +152,9 @@ const Table = () => {
               className={`action-btn remove-btn${
                 isOffline ? " remove-offline" : ""
               }`}
-              onClick={() => openGameCategoryDeleteModal(record)}
+              onClick={() => {
+                openGameStoreModal("isDeleteModalOpen", null, record);
+              }}
             >
               Remove
             </Button>
@@ -168,7 +166,7 @@ const Table = () => {
             size="small"
             className={`action-btn add-btn${isOffline ? " disabled" : ""}`}
             disabled={isOffline}
-            onClick={() => !isOffline && setIsAddModalOpen(true)}
+            onClick={() => !isOffline && openGameStoreModal("isAddModalOpen")}
           >
             Add
           </Button>
@@ -178,72 +176,69 @@ const Table = () => {
   ];
 
   const handlePageChange = (page) => {
-    setGameCategoryCurrentPage(page);
+    setGameStoreCurrentPage(page);
   };
-
-  // Modal states
-  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
-  const [isPingModalOpen, setIsPingModalOpen] = useState(false);
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
 
   // Delete modal handlers
   const handleDeleteOk = () => {
     console.log("Delete confirmed");
-    confirmDeleteGameCategoryItem();
+    if (itemToDelete) {
+      deleteGameStoreItem(itemToDelete.key);
+    }
+    closeGameStoreModal("isDeleteModalOpen");
   };
 
   const handleDeleteCancel = () => {
     console.log("Delete cancelled");
-    closeGameCategoryDeleteModal();
+    closeGameStoreModal("isDeleteModalOpen");
   };
 
   // Update modal handlers
   const handleUpdateOk = () => {
     console.log("Update confirmed");
-    setIsUpdateModalOpen(false);
+    closeGameStoreModal("isUpdateModalOpen");
     // Add your update logic here
   };
 
   const handleUpdateCancel = () => {
     console.log("Update cancelled");
-    setIsUpdateModalOpen(false);
+    closeGameStoreModal("isUpdateModalOpen");
   };
 
   // Ping modal handlers
   const handlePingOk = () => {
     console.log("Ping confirmed");
-    setIsPingModalOpen(false);
+    closeGameStoreModal("isPingModalOpen");
     // Add your ping logic here
   };
 
   const handlePingCancel = () => {
     console.log("Ping cancelled");
-    setIsPingModalOpen(false);
+    closeGameStoreModal("isPingModalOpen");
   };
 
   // Add modal handlers
   const handleAddOk = () => {
     console.log("Add confirmed");
-    setIsAddModalOpen(false);
+    closeGameStoreModal("isAddModalOpen");
     // Add your add logic here
   };
 
   const handleAddCancel = () => {
     console.log("Add cancelled");
-    setIsAddModalOpen(false);
+    closeGameStoreModal("isAddModalOpen");
   };
 
   // Move (One Click Remove) modal handlers
   const handleMoveOk = () => {
     console.log("One Click Remove confirmed");
-    setIsMoveModalOpen(false);
+    closeGameStoreModal("isMoveModalOpen");
     // Add your remove logic here
   };
 
   const handleMoveCancel = () => {
     console.log("One Click Remove cancelled");
-    setIsMoveModalOpen(false);
+    closeGameStoreModal("isMoveModalOpen");
   };
 
   const handleOk = (data) => {
@@ -252,7 +247,7 @@ const Table = () => {
     console.log("Visibility:", data.visibility);
     if (editingItem) {
       // Update existing item
-      updateGameCategoryItem(editingItem.key, {
+      updateGameStoreItem(editingItem.key, {
         name: data.name,
         visibility: data.visibility,
       });
@@ -262,18 +257,22 @@ const Table = () => {
         key: Date.now().toString(),
         id: Date.now(),
         name: data.name,
-        icon: "",
+        provider: "ag",
+        category: "Slot",
+        pingMs: undefined,
+        pingStatus: "offline",
+        inStore: false,
         state: true,
         createTime: new Date().toLocaleString(),
         visibility: data.visibility,
       };
-      addGameCategoryItem(newItem);
+      addGameStoreItem(newItem);
     }
-    closeGameCategoryAddEditModal();
+    closeGameStoreModal("isAddEditModalOpen");
   };
 
   const handleCancel = () => {
-    closeGameCategoryAddEditModal();
+    closeGameStoreModal("isAddEditModalOpen");
   };
 
   const categoryOptions = [
@@ -364,7 +363,7 @@ const Table = () => {
               icon={<UploadOutlined />}
               type="primary"
               className="update-button"
-              onClick={() => setIsUpdateModalOpen(true)}
+              onClick={() => openGameStoreModal("isUpdateModalOpen")}
             >
               Update
             </Button>
@@ -374,7 +373,7 @@ const Table = () => {
             <Button
               type="primary"
               className="ping-button"
-              onClick={() => setIsPingModalOpen(true)}
+              onClick={() => openGameStoreModal("isPingModalOpen")}
             >
               Ping
             </Button>
@@ -384,7 +383,7 @@ const Table = () => {
         <Button
           type="primary"
           className="oneclick-button"
-          onClick={() => setIsMoveModalOpen(true)}
+          onClick={() => openGameStoreModal("isMoveModalOpen")}
         >
           One Click Remove
         </Button>

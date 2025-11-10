@@ -7,14 +7,19 @@ import {
   PlayCircleOutlined,
   EditOutlined,
 } from "@ant-design/icons";
+import { useAppContext } from "../../../../contexts";
 import "./style.css";
 
 const { RangePicker } = DatePicker;
 
 const GameProducts = () => {
-  const [currentPage, setCurrentPage] = useState(51);
-  const [pageSize] = useState(10);
-  const totalItems = 658;
+  const {
+    state,
+    setGameManagerCurrentPage,
+  } = useAppContext();
+
+  const { pagination } = state.gameManager;
+  const { currentPage, pageSize, totalItems } = pagination;
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -68,7 +73,7 @@ const GameProducts = () => {
   };
 
   const handlePageChange = (page) => {
-    setCurrentPage(page);
+    setGameManagerCurrentPage(page);
   };
 
   const handleDeleteOk = () => {

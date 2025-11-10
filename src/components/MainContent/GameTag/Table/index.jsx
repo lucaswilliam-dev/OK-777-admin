@@ -1,43 +1,31 @@
-import React, { useState } from "react";
+import React from "react";
 import { Table as AntTable, Switch, Space, Button, Modal, Select } from "antd";
 import TagEditModal from "../../../Modal/TagEditModal";
 import { ExclamationCircleFilled } from "@ant-design/icons";
+import { useAppContext } from "../../../../contexts";
 import "./style.css";
 
 const Table = () => {
-  const [dataSource, setDataSource] = useState([
-    {
-      key: "1",
-      id: 23,
-      name: "Hot",
-      icon: "HOT",
-      state: true,
-      createTime: "2021-02-28 10:30",
-    },
-    {
-      key: "2",
-      id: 25,
-      name: "New",
-      icon: "NEW",
-      state: true,
-      createTime: "2021-02-28 10:30",
-    },
-  ]);
+  const {
+    state,
+    updateGameTagsItem,
+    addGameTagsItem,
+    openGameTagsAddEditModal,
+    closeGameTagsAddEditModal,
+    openGameTagsDeleteModal,
+    closeGameTagsDeleteModal,
+    confirmDeleteGameTagsItem,
+  } = useAppContext();
+
+  const { dataSource, modals } = state.gameTags;
+  const { isAddEditModalOpen, isDeleteModalOpen, editingItem } = modals;
 
   const handleStateChange = (record, checked) => {
-    setDataSource(
-      dataSource.map((item) =>
-        item.key === record.key ? { ...item, state: checked } : item
-      )
-    );
+    updateGameTagsItem(record.key, { state: checked });
   };
 
   const handleIconChange = (record, value) => {
-    setDataSource(
-      dataSource.map((item) =>
-        item.key === record.key ? { ...item, icon: value } : item
-      )
-    );
+    updateGameTagsItem(record.key, { icon: value });
   };
 
   const iconOptions = [
@@ -121,7 +109,7 @@ const Table = () => {
           <p
             className="edit-link"
             onClick={() => {
-              createModalShow(record);
+              openGameTagsAddEditModal(record);
             }}
           >
             Edit
@@ -129,8 +117,7 @@ const Table = () => {
           <p
             className="delete-link"
             onClick={() => {
-              showDeleteModal();
-              // You can set item to delete here if needed
+              openGameTagsDeleteModal(record);
             }}
           >
             Delete
@@ -140,44 +127,30 @@ const Table = () => {
     },
   ];
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [editingTag, setEditingTag] = useState(null);
-
   const createModalShow = (tag = null) => {
-    setEditingTag(tag);
-    setIsModalOpen(true);
-  };
-
-  const showDeleteModal = () => {
-    console.log("Delete modal triggered");
-    setIsDeleteModalOpen(true);
+    openGameTagsAddEditModal(tag);
   };
 
   const handleDeleteOk = () => {
     console.log("Delete confirmed");
-    setIsDeleteModalOpen(false);
-    // Add your delete logic here
+    confirmDeleteGameTagsItem();
   };
 
   const handleDeleteCancel = () => {
     console.log("Delete cancelled");
-    setIsDeleteModalOpen(false);
+    closeGameTagsDeleteModal();
   };
 
   const handleOk = (data) => {
     // Handle form submission here
     console.log("Name:", data.name);
     console.log("Icon:", data.icon);
-    if (editingTag) {
+    if (editingItem) {
       // Update existing tag
-      setDataSource(
-        dataSource.map((item) =>
-          item.key === editingTag.key
-            ? { ...item, name: data.name, icon: data.icon }
-            : item
-        )
-      );
+      updateGameTagsItem(editingItem.key, {
+        name: data.name,
+        icon: data.icon,
+      });
     } else {
       // Add new tag
       const newTag = {
@@ -188,15 +161,13 @@ const Table = () => {
         state: true,
         createTime: new Date().toLocaleString(),
       };
-      setDataSource([...dataSource, newTag]);
+      addGameTagsItem(newTag);
     }
-    setIsModalOpen(false);
-    setEditingTag(null);
+    closeGameTagsAddEditModal();
   };
 
   const handleCancel = () => {
-    setIsModalOpen(false);
-    setEditingTag(null);
+    closeGameTagsAddEditModal();
   };
 
   return (
@@ -232,10 +203,10 @@ const Table = () => {
         />
       </div>
       <TagEditModal
-        open={isModalOpen}
+        open={isAddEditModalOpen}
         onOk={handleOk}
         onCancel={handleCancel}
-        initialData={editingTag}
+        initialData={editingItem}
       />
       <Modal
         title={null}
