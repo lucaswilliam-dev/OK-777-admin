@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import {
-  Table as AntTable,
   Switch,
   Space,
   Button,
@@ -157,72 +156,6 @@ const GameProducts = () => {
     setIsDeleteModalOpen(true);
   };
 
-  const columns = [
-    {
-      title: "ID",
-      dataIndex: "id",
-      key: "id",
-      width: 150,
-      align: "left",
-    },
-    {
-      title: "Name",
-      dataIndex: "name",
-      key: "name",
-      width: 150,
-      align: "left",
-    },
-    {
-      title: "Icon",
-      dataIndex: "icon",
-      key: "icon",
-      width: 100,
-      align: "center",
-      render: () => (
-        <div className="category-icon">
-          <div className="icon-circle"></div>
-        </div>
-      ),
-    },
-    {
-      title: "State",
-      dataIndex: "state",
-      key: "state",
-      width: 150,
-      align: "center",
-      render: (_, record) => (
-        <Switch
-          checked={record.state}
-          onChange={(checked) => handleStateChange(record, checked)}
-          className="state-switch"
-        />
-      ),
-    },
-    {
-      title: "CreateTime",
-      dataIndex: "createTime",
-      key: "createTime",
-      width: 180,
-      align: "center",
-    },
-    {
-      title: "操作",
-      key: "action",
-      width: 150,
-      align: "center",
-      render: (_, record) => (
-        <Space size="middle">
-          <p className="edit-link" onClick={createModalShow}>
-            Edit
-          </p>
-          <p className="delete-link" onClick={showDeleteModal}>
-            Delete
-          </p>
-        </Space>
-      ),
-    },
-  ];
-
   return (
     <div className="table-container">
       <div className="search-filter-container">
@@ -321,17 +254,211 @@ const GameProducts = () => {
               <p>EN:Candy Wars</p>
             </div>
           </div>
+          <div className="product">
+            <div>
+              <img
+                src="/cat.jpg"
+                alt=""
+                style={{ width: "107px", height: "140px" }}
+              />
+            </div>
+            <div className="product-label">
+              <p>CN:糖果大战</p>
+              <p>EN:Candy Wars</p>
+            </div>
+          </div>
+          <div className="product">
+            <div>
+              <img
+                src="/cat.jpg"
+                alt=""
+                style={{ width: "107px", height: "140px" }}
+              />
+            </div>
+            <div className="product-label">
+              <p>CN:糖果大战</p>
+              <p>EN:Candy Wars</p>
+            </div>
+          </div>
+          <div className="product">
+            <div>
+              <img
+                src="/cat.jpg"
+                alt=""
+                style={{ width: "107px", height: "140px" }}
+              />
+            </div>
+            <div className="product-label">
+              <p>CN:糖果大战</p>
+              <p>EN:Candy Wars</p>
+            </div>
+          </div>
+          <div className="product">
+            <div>
+              <img
+                src="/cat.jpg"
+                alt=""
+                style={{ width: "107px", height: "140px" }}
+              />
+            </div>
+            <div className="product-label">
+              <p>CN:糖果大战</p>
+              <p>EN:Candy Wars</p>
+            </div>
+          </div>
+          <div className="product">
+            <div>
+              <img
+                src="/cat.jpg"
+                alt=""
+                style={{ width: "107px", height: "140px" }}
+              />
+            </div>
+            <div className="product-label">
+              <p>CN:糖果大战</p>
+              <p>EN:Candy Wars</p>
+            </div>
+          </div>
+          <div className="product">
+            <div>
+              <img
+                src="/cat.jpg"
+                alt=""
+                style={{ width: "107px", height: "140px" }}
+              />
+            </div>
+            <div className="product-label">
+              <p>CN:糖果大战</p>
+              <p>EN:Candy Wars</p>
+            </div>
+          </div>
+          <div className="product">
+            <div>
+              <img
+                src="/cat.jpg"
+                alt=""
+                style={{ width: "107px", height: "140px" }}
+              />
+            </div>
+            <div className="product-label">
+              <p>CN:糖果大战</p>
+              <p>EN:Candy Wars</p>
+            </div>
+          </div>
+          <div className="product">
+            <div>
+              <img
+                src="/cat.jpg"
+                alt=""
+                style={{ width: "107px", height: "140px" }}
+              />
+            </div>
+            <div className="product-label">
+              <p>CN:糖果大战</p>
+              <p>EN:Candy Wars</p>
+            </div>
+          </div>
+          <div className="product">
+            <div>
+              <img
+                src="/cat.jpg"
+                alt=""
+                style={{ width: "107px", height: "140px" }}
+              />
+            </div>
+            <div className="product-label">
+              <p>CN:糖果大战</p>
+              <p>EN:Candy Wars</p>
+            </div>
+          </div>
+          <div className="product">
+            <div>
+              <img
+                src="/cat.jpg"
+                alt=""
+                style={{ width: "107px", height: "140px" }}
+              />
+            </div>
+            <div className="product-label">
+              <p>CN:糖果大战</p>
+              <p>EN:Candy Wars</p>
+            </div>
+          </div>
+          <div className="product">
+            <div>
+              <img
+                src="/cat.jpg"
+                alt=""
+                style={{ width: "107px", height: "140px" }}
+              />
+            </div>
+            <div className="product-label">
+              <p>CN:糖果大战</p>
+              <p>EN:Candy Wars</p>
+            </div>
+          </div>
+          <div className="product">
+            <div>
+              <img
+                src="/cat.jpg"
+                alt=""
+                style={{ width: "107px", height: "140px" }}
+              />
+            </div>
+            <div className="product-label">
+              <p>CN:糖果大战</p>
+              <p>EN:Candy Wars</p>
+            </div>
+          </div>
+          <div className="product">
+            <div>
+              <img
+                src="/cat.jpg"
+                alt=""
+                style={{ width: "107px", height: "140px" }}
+              />
+            </div>
+            <div className="product-label">
+              <p>CN:糖果大战</p>
+              <p>EN:Candy Wars</p>
+            </div>
+          </div>
+          <div className="product">
+            <div>
+              <img
+                src="/cat.jpg"
+                alt=""
+                style={{ width: "107px", height: "140px" }}
+              />
+            </div>
+            <div className="product-label">
+              <p>CN:糖果大战</p>
+              <p>EN:Candy Wars</p>
+            </div>
+          </div>
+          <div className="product">
+            <div>
+              <img
+                src="/cat.jpg"
+                alt=""
+                style={{ width: "107px", height: "140px" }}
+              />
+            </div>
+            <div className="product-label">
+              <p>CN:糖果大战</p>
+              <p>EN:Candy Wars</p>
+            </div>
+          </div>
         </div>
         <div className="game-model">
           <img
             src="/model.png"
             alt=""
-            style={{ width: "100%", height: "100%" }}
+            style={{ width: "296px", height: "100%" }}
           />
         </div>
       </div>
-      <div className="table-pagination">
-        <div></div>
+      <div className="table-pagination1">
         <div className="main-pagination">
           <div>Total 658</div>
           <Pagination

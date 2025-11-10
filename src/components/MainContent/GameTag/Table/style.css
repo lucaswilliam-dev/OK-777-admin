@@ -329,6 +329,94 @@
   background-color: #52c41a;
 }
 
+/* Icon Select Styles */
+.icon-select {
+  width: 100%;
+  min-width: 80px;
+}
+
+.icon-select .ant-select-selector {
+  border: none !important;
+  background: transparent !important;
+  padding: 0 !important;
+  height: auto !important;
+  box-shadow: none !important;
+}
+
+.icon-select .ant-select-selection-item {
+  padding: 2px 8px !important;
+  line-height: 1.5 !important;
+  height: auto !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 4px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  color: #ffffff !important;
+  white-space: nowrap !important;
+}
+
+.icon-select-hot .ant-select-selection-item {
+  background-color: #ff4d4f !important;
+}
+
+.icon-select-new .ant-select-selection-item {
+  background-color: #52c41a !important;
+}
+
+.icon-select .ant-select-selection-placeholder {
+  display: none !important;
+}
+
+.icon-select .ant-select-arrow {
+  margin-top: -6px;
+  right: 2px;
+  color: #ffffff;
+  font-size: 10px;
+  opacity: 0.8;
+}
+
+.icon-select:hover .ant-select-arrow {
+  opacity: 1;
+}
+
+.icon-select.ant-select-focused .ant-select-selector {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.icon-select.ant-select-focused .ant-select-arrow {
+  opacity: 1;
+}
+
+/* Icon Select Dropdown */
+.icon-select-dropdown .ant-select-item {
+  padding: 4px 8px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-height: 32px !important;
+}
+
+.icon-select-dropdown .ant-select-item-option-content {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.icon-select-dropdown .ant-select-item-option-selected {
+  background-color: #f5f5f5 !important;
+}
+
+.icon-select-dropdown .ant-select-item-option-selected .tag-badge {
+  opacity: 1;
+}
+
+.icon-select-dropdown .ant-select-item:hover {
+  background-color: #fafafa !important;
+}
+
 /* Switch smaller */
 .state-switch {
   transform: scale(0.8);

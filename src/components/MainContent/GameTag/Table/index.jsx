@@ -1,11 +1,5 @@
 import React, { useState } from "react";
-import {
-  Table as AntTable,
-  Switch,
-  Space,
-  Button,
-  Modal,
-} from "antd";
+import { Table as AntTable, Switch, Space, Button, Modal, Select } from "antd";
 import AddOrEditModal from "../../../Modal/AddOrEditModal";
 import { ExclamationCircleFilled } from "@ant-design/icons";
 import "./style.css";
@@ -42,6 +36,19 @@ const Table = () => {
     );
   };
 
+  const handleIconChange = (record, value) => {
+    setDataSource(
+      dataSource.map((item) =>
+        item.key === record.key ? { ...item, icon: value } : item
+      )
+    );
+  };
+
+  const iconOptions = [
+    { value: "HOT", label: "HOT" },
+    { value: "NEW", label: "NEW" },
+  ];
+
   const columns = [
     {
       title: "ID",
@@ -65,15 +72,25 @@ const Table = () => {
       align: "center",
       render: (icon, record) => (
         <div className="tag-badge-container">
-          {icon && (
-            <span
-              className={`tag-badge ${
-                icon.toUpperCase() === "HOT" ? "tag-badge-hot" : "tag-badge-new"
-              }`}
-            >
-              {icon.toUpperCase()}
-            </span>
-          )}
+          <Select
+            value={icon}
+            onChange={(value) => handleIconChange(record, value)}
+            className={`icon-select icon-select-${icon.toLowerCase()}`}
+            dropdownClassName="icon-select-dropdown"
+            size="small"
+          >
+            {iconOptions.map((option) => (
+              <Select.Option key={option.value} value={option.value}>
+                <span
+                  className={`tag-badge ${
+                    option.value === "HOT" ? "tag-badge-hot" : "tag-badge-new"
+                  }`}
+                >
+                  {option.label}
+                </span>
+              </Select.Option>
+            ))}
+          </Select>
         </div>
       ),
     },
@@ -130,10 +147,6 @@ const Table = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-
-  const handlePageChange = (page) => {
-    setCurrentPage(page);
-  };
 
   const createModalShow = () => {
     setIsModalOpen(true);
