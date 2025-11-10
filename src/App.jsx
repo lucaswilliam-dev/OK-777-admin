@@ -9,7 +9,7 @@ import GameManager from "./components/MainContent/GameManager";
 import GameStore from "./components/MainContent/GameStore";
 import GameTag from "./components/MainContent/GameTag";
 
-function App() {
+const App = () => {
   return (
     <AppProvider>
       <Router>
@@ -31,6 +31,6 @@ function App() {
       </Router>
     </AppProvider>
   );
-}
+};
 
 export default App;

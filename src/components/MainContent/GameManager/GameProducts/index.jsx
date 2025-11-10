@@ -142,7 +142,7 @@ const GameProducts = () => {
             >
               Search
             </Button>
-          </div>
+          </div>  
         </div>
         <div className="search-filter-row">
           <div className="filter-item">

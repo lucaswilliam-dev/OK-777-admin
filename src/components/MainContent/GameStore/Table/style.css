@@ -1,0 +1,179 @@
+.filter-input-game-store,
+.filter-select-game-store {
+  width: 210px;
+}
+
+.search-filter-row-game-store {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  width: 100%;
+  gap: 15px;
+}
+
+.game-store-buttons {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.update-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 60%;
+}
+
+.ping-button {
+  width: 80px;
+  background-color: #c0ad02;
+}
+
+.oneclick-button {
+  width: 140px;
+}
+
+.update-button {
+  width: 100px;
+}
+
+.update-button-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.update-button-content span {
+  font-size: 14px;
+}
+
+/* ============ Game Store Table ============ */
+.table-wrapper {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+}
+
+.game-store-table {
+  font-size: 13px;
+  background-color: #fff;
+}
+
+.game-store-table .ant-table-thead > tr > th {
+  background-color: #f5f7fa !important;
+  font-weight: 600;
+  color: #000;
+  padding: 6px 12px !important;
+  height: 28px !important;
+  line-height: 28px !important;
+  border-bottom: 1px solid #f0f0f0 !important;
+  text-align: center !important;
+}
+
+.game-store-table .ant-table-tbody > tr > td {
+  padding: 8px 12px !important;
+  height: 40px !important;
+  line-height: 24px !important;
+  border-bottom: 1px solid #f5f5f5 !important;
+  vertical-align: middle;
+  text-align: center !important;
+}
+
+.game-store-table .ant-table-tbody > tr:hover > td {
+  background: #fafafa !important;
+}
+
+/* Text ellipsis for long content */
+.cell-ellipsis {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+/* Status badges */
+.state-badge {
+  font-weight: 500;
+}
+.state-badge.available {
+  color: #52c41a; /* green */
+}
+.state-badge.unavailable {
+  color: #8c8c8c; /* grey */
+}
+
+/* Ping badges */
+.ping-badge {
+  font-weight: 500;
+}
+.ping-badge.good {
+  color: #52c41a;
+}
+.ping-badge.warn {
+  color: #faad14;
+}
+.ping-badge.slow {
+  color: #fa541c;
+}
+.ping-badge.offline {
+  color: #ff4d4f;
+}
+
+/* Action buttons - all buttons must have exactly the same size */
+.action-btn {
+  height: 26px !important;
+  min-width: 80px !important;
+  width: 80px !important;
+  max-width: 80px !important;
+  padding: 0 12px !important;
+  border-radius: 4px !important;
+  font-size: 14px !important;
+  line-height: 1.5715 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-sizing: border-box !important;
+}
+.action-btn.add-btn {
+  background-color: #1677ff !important;
+  border-color: #1677ff !important;
+  color: #fff !important;
+}
+.action-btn.add-btn.disabled,
+.action-btn.add-btn:disabled {
+  background-color: #d9d9d9 !important;
+  border-color: #d9d9d9 !important;
+  color: #595959 !important;
+  height: 26px !important;
+  min-width: 80px !important;
+  width: 80px !important;
+  max-width: 80px !important;
+}
+.action-btn.remove-btn {
+  background-color: #ff4d4f !important;
+  border-color: #ff4d4f !important;
+  color: #fff !important;
+}
+.action-btn.remove-btn.remove-offline {
+  background-color: #722ed1 !important; /* purple when removing offline */
+  border-color: #722ed1 !important;
+  color: #fff !important;
+}
+
+.filter-item-state {
+  gap: 80px;
+}
+
+.search-filter-row-state {
+  gap: 45px;
+  flex-wrap: wrap;
+}
+
+.filter-item-ping {
+  gap: 35px;
+}
