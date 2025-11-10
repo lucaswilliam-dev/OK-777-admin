@@ -1,14 +1,5 @@
 import React, { useState } from "react";
-import {
-  Switch,
-  Space,
-  Button,
-  Pagination,
-  Modal,
-  Input,
-  Select,
-  DatePicker,
-} from "antd";
+import { Button, Pagination, Modal, Input, Select, DatePicker } from "antd";
 import AddOrEditModal from "../../../Modal/AddOrEditModal";
 import { ExclamationCircleFilled, SearchOutlined } from "@ant-design/icons";
 import "./style.css";
@@ -19,57 +10,6 @@ const GameProducts = () => {
   const [currentPage, setCurrentPage] = useState(51);
   const [pageSize] = useState(10);
   const totalItems = 658;
-
-  const [dataSource, setDataSource] = useState([
-    {
-      key: "1",
-      id: 23,
-      name: "Slot",
-      icon: "",
-      state: true,
-      createTime: "2021-02-28 10:30",
-    },
-    {
-      key: "2",
-      id: 25,
-      name: "LiveCasino",
-      icon: "",
-      state: true,
-      createTime: "2021-02-28 10:30",
-    },
-    {
-      key: "3",
-      id: 46,
-      name: "CryptoGames",
-      icon: "",
-      state: true,
-      createTime: "2021-02-28 10:30",
-    },
-    {
-      key: "4",
-      id: 577,
-      name: "TableGames",
-      icon: "",
-      state: true,
-      createTime: "2021-02-28 10:30",
-    },
-    {
-      key: "5",
-      id: 578,
-      name: "Sport",
-      icon: "",
-      state: true,
-      createTime: "2021-02-28 10:30",
-    },
-  ]);
-
-  const handleStateChange = (record, checked) => {
-    setDataSource(
-      dataSource.map((item) =>
-        item.key === record.key ? { ...item, state: checked } : item
-      )
-    );
-  };
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -145,15 +85,6 @@ const GameProducts = () => {
 
   const handleCancel = () => {
     setIsModalOpen(false);
-  };
-
-  const createModalShow = () => {
-    setIsModalOpen(true);
-  };
-
-  const showDeleteModal = () => {
-    console.log("Delete modal triggered");
-    setIsDeleteModalOpen(true);
   };
 
   return (
@@ -237,216 +168,196 @@ const GameProducts = () => {
           </div>
         </div>
       </div>
-
       <div className="line"></div>
       <div className="table-wrapper1">
         <div className="products">
           <div className="product">
             <div>
-              <img
-                src="/cat.jpg"
-                alt=""
-                style={{ width: "107px", height: "140px" }}
-              />
+              <img src="/cat.jpg" alt="" id="cat-img" />
             </div>
             <div className="product-label">
-              <p>CN:糖果大战</p>
-              <p>EN:Candy Wars</p>
+              <p className="cn">CN:糖果大战</p>
+              <p className="en">EN:Candy Wars</p>
             </div>
           </div>
           <div className="product">
             <div>
-              <img
-                src="/cat.jpg"
-                alt=""
-                style={{ width: "107px", height: "140px" }}
-              />
+              <img src="/cat.jpg" alt="" id="cat-img" />
             </div>
             <div className="product-label">
-              <p>CN:糖果大战</p>
-              <p>EN:Candy Wars</p>
+              <p className="cn">CN:糖果大战</p>
+              <p className="en">EN:Candy Wars</p>
             </div>
           </div>
           <div className="product">
             <div>
-              <img
-                src="/cat.jpg"
-                alt=""
-                style={{ width: "107px", height: "140px" }}
-              />
+              <img src="/cat.jpg" alt="" id="cat-img" />
             </div>
             <div className="product-label">
-              <p>CN:糖果大战</p>
-              <p>EN:Candy Wars</p>
+              <p className="cn">CN:糖果大战</p>
+              <p className="en">EN:Candy Wars</p>
             </div>
           </div>
           <div className="product">
             <div>
-              <img
-                src="/cat.jpg"
-                alt=""
-                style={{ width: "107px", height: "140px" }}
-              />
+              <img src="/cat.jpg" alt="" id="cat-img" />
             </div>
             <div className="product-label">
-              <p>CN:糖果大战</p>
-              <p>EN:Candy Wars</p>
+              <p className="cn">CN:糖果大战</p>
+              <p className="en">EN:Candy Wars</p>
             </div>
           </div>
           <div className="product">
             <div>
-              <img
-                src="/cat.jpg"
-                alt=""
-                style={{ width: "107px", height: "140px" }}
-              />
+              <img src="/cat.jpg" alt="" id="cat-img" />
             </div>
             <div className="product-label">
-              <p>CN:糖果大战</p>
-              <p>EN:Candy Wars</p>
+              <p className="cn">CN:糖果大战</p>
+              <p className="en">EN:Candy Wars</p>
             </div>
           </div>
           <div className="product">
             <div>
-              <img
-                src="/cat.jpg"
-                alt=""
-                style={{ width: "107px", height: "140px" }}
-              />
+              <img src="/cat.jpg" alt="" id="cat-img" />
             </div>
             <div className="product-label">
-              <p>CN:糖果大战</p>
-              <p>EN:Candy Wars</p>
+              <p className="cn">CN:糖果大战</p>
+              <p className="en">EN:Candy Wars</p>
             </div>
           </div>
           <div className="product">
             <div>
-              <img
-                src="/cat.jpg"
-                alt=""
-                style={{ width: "107px", height: "140px" }}
-              />
+              <img src="/cat.jpg" alt="" id="cat-img" />
             </div>
             <div className="product-label">
-              <p>CN:糖果大战</p>
-              <p>EN:Candy Wars</p>
+              <p className="cn">CN:糖果大战</p>
+              <p className="en">EN:Candy Wars</p>
             </div>
           </div>
           <div className="product">
             <div>
-              <img
-                src="/cat.jpg"
-                alt=""
-                style={{ width: "107px", height: "140px" }}
-              />
+              <img src="/cat.jpg" alt="" id="cat-img" />
             </div>
             <div className="product-label">
-              <p>CN:糖果大战</p>
-              <p>EN:Candy Wars</p>
+              <p className="cn">CN:糖果大战</p>
+              <p className="en">EN:Candy Wars</p>
             </div>
           </div>
           <div className="product">
             <div>
-              <img
-                src="/cat.jpg"
-                alt=""
-                style={{ width: "107px", height: "140px" }}
-              />
+              <img src="/cat.jpg" alt="" id="cat-img" />
             </div>
             <div className="product-label">
-              <p>CN:糖果大战</p>
-              <p>EN:Candy Wars</p>
+              <p className="cn">CN:糖果大战</p>
+              <p className="en">EN:Candy Wars</p>
             </div>
           </div>
           <div className="product">
             <div>
-              <img
-                src="/cat.jpg"
-                alt=""
-                style={{ width: "107px", height: "140px" }}
-              />
+              <img src="/cat.jpg" alt="" id="cat-img" />
             </div>
             <div className="product-label">
-              <p>CN:糖果大战</p>
-              <p>EN:Candy Wars</p>
+              <p className="cn">CN:糖果大战</p>
+              <p className="en">EN:Candy Wars</p>
             </div>
           </div>
           <div className="product">
             <div>
-              <img
-                src="/cat.jpg"
-                alt=""
-                style={{ width: "107px", height: "140px" }}
-              />
+              <img src="/cat.jpg" alt="" id="cat-img" />
             </div>
             <div className="product-label">
-              <p>CN:糖果大战</p>
-              <p>EN:Candy Wars</p>
+              <p className="cn">CN:糖果大战</p>
+              <p className="en">EN:Candy Wars</p>
             </div>
           </div>
           <div className="product">
             <div>
-              <img
-                src="/cat.jpg"
-                alt=""
-                style={{ width: "107px", height: "140px" }}
-              />
+              <img src="/cat.jpg" alt="" id="cat-img" />
             </div>
             <div className="product-label">
-              <p>CN:糖果大战</p>
-              <p>EN:Candy Wars</p>
+              <p className="cn">CN:糖果大战</p>
+              <p className="en">EN:Candy Wars</p>
             </div>
           </div>
           <div className="product">
             <div>
-              <img
-                src="/cat.jpg"
-                alt=""
-                style={{ width: "107px", height: "140px" }}
-              />
+              <img src="/cat.jpg" alt="" id="cat-img" />
             </div>
             <div className="product-label">
-              <p>CN:糖果大战</p>
-              <p>EN:Candy Wars</p>
+              <p className="cn">CN:糖果大战</p>
+              <p className="en">EN:Candy Wars</p>
             </div>
           </div>
           <div className="product">
             <div>
-              <img
-                src="/cat.jpg"
-                alt=""
-                style={{ width: "107px", height: "140px" }}
-              />
+              <img src="/cat.jpg" alt="" id="cat-img" />
             </div>
             <div className="product-label">
-              <p>CN:糖果大战</p>
-              <p>EN:Candy Wars</p>
+              <p className="cn">CN:糖果大战</p>
+              <p className="en">EN:Candy Wars</p>
             </div>
           </div>
           <div className="product">
             <div>
-              <img
-                src="/cat.jpg"
-                alt=""
-                style={{ width: "107px", height: "140px" }}
-              />
+              <img src="/cat.jpg" alt="" id="cat-img" />
             </div>
             <div className="product-label">
-              <p>CN:糖果大战</p>
-              <p>EN:Candy Wars</p>
+              <p className="cn">CN:糖果大战</p>
+              <p className="en">EN:Candy Wars</p>
             </div>
           </div>
           <div className="product">
             <div>
-              <img
-                src="/cat.jpg"
-                alt=""
-                style={{ width: "107px", height: "140px" }}
-              />
+              <img src="/cat.jpg" alt="" id="cat-img" />
             </div>
             <div className="product-label">
-              <p>CN:糖果大战</p>
-              <p>EN:Candy Wars</p>
+              <p className="cn">CN:糖果大战</p>
+              <p className="en">EN:Candy Wars</p>
+            </div>
+          </div>
+          <div className="product">
+            <div>
+              <img src="/cat.jpg" alt="" id="cat-img" />
+            </div>
+            <div className="product-label">
+              <p className="cn">CN:糖果大战</p>
+              <p className="en">EN:Candy Wars</p>
+            </div>
+          </div>
+          <div className="product">
+            <div>
+              <img src="/cat.jpg" alt="" id="cat-img" />
+            </div>
+            <div className="product-label">
+              <p className="cn">CN:糖果大战</p>
+              <p className="en">EN:Candy Wars</p>
+            </div>
+          </div>
+          <div className="product">
+            <div>
+              <img src="/cat.jpg" alt="" id="cat-img" />
+            </div>
+            <div className="product-label">
+              <p className="cn">CN:糖果大战</p>
+              <p className="en">EN:Candy Wars</p>
+            </div>
+          </div>
+          <div className="product">
+            <div>
+              <img src="/cat.jpg" alt="" id="cat-img" />
+            </div>
+            <div className="product-label">
+              <p className="cn">CN:糖果大战</p>
+              <p className="en">EN:Candy Wars</p>
+            </div>
+          </div>
+          <div className="product">
+            <div>
+              <img src="/cat.jpg" alt="" id="cat-img" />
+            </div>
+            <div className="product-label">
+              <p className="cn">CN:糖果大战</p>
+              <p className="en">EN:Candy Wars</p>
             </div>
           </div>
         </div>

@@ -1,4 +1,5 @@
 import React from "react";
+import Table from "./Table";
 import { HomeOutlined } from "@ant-design/icons";
 import "./style.css";
 
@@ -11,6 +12,7 @@ const GameStore = () => {
           {"/ Third-Game /"} <span className="span">{"Game Store"}</span>
         </div>
       </div>
+      <Table />
     </div>
   );
 };

@@ -4,7 +4,7 @@
   padding: 16px 24px 24px 24px;
   display: flex;
   flex-direction: column;
-  height: 96%;
+  height: 100%;
 }
 
 .game-category-table .ant-table-body {
@@ -1015,19 +1015,41 @@
 
 .table-wrapper1 {
   display: flex;
+  align-items: flex-start;
   justify-content: space-between;
   flex: 1;
   overflow: hidden;
   min-height: 0;
-  gap: 0px;
+  gap: 10px;
 }
 
 .products {
   display: flex;
+  justify-content: space-between;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 5px;
+  flex: 1;
+  min-height: 0;
+  max-height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 4px; /* keep content clear of scrollbar */
 }
 
 .game-model {
   width: 296px;
+  height: 100%;
+}
+
+.product-label .cn {
+  line-height: 20px;
+}
+
+.product-label .en {
+  line-height: 0px;
+}
+
+#cat-img {
+  width: 107px;
+  height: 120px;
 }
