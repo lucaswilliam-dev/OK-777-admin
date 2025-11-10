@@ -3,6 +3,10 @@ import { Table as AntTable, Button, Pagination, Input, Select } from "antd";
 import { SearchOutlined, UploadOutlined } from "@ant-design/icons";
 import AddOrEditModal from "../../../Modal/AddOrEditModal";
 import DeleteModal from "../../../Modal/DeleteModal";
+import StoreUpdate from "../../../Modal/StoreUpdate";
+import StorePing from "../../../Modal/StorePing";
+import StoreAdd from "../../../Modal/StoreAdd";
+import StoreMove from "../../../Modal/StoreMove";
 import { useAppContext } from "../../../../contexts";
 import "./style.css";
 
@@ -164,7 +168,7 @@ const Table = () => {
             size="small"
             className={`action-btn add-btn${isOffline ? " disabled" : ""}`}
             disabled={isOffline}
-            onClick={() => !isOffline && openGameCategoryAddEditModal(record)}
+            onClick={() => !isOffline && setIsAddModalOpen(true)}
           >
             Add
           </Button>
@@ -177,6 +181,13 @@ const Table = () => {
     setGameCategoryCurrentPage(page);
   };
 
+  // Modal states
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
+  const [isPingModalOpen, setIsPingModalOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
+
+  // Delete modal handlers
   const handleDeleteOk = () => {
     console.log("Delete confirmed");
     confirmDeleteGameCategoryItem();
@@ -185,6 +196,54 @@ const Table = () => {
   const handleDeleteCancel = () => {
     console.log("Delete cancelled");
     closeGameCategoryDeleteModal();
+  };
+
+  // Update modal handlers
+  const handleUpdateOk = () => {
+    console.log("Update confirmed");
+    setIsUpdateModalOpen(false);
+    // Add your update logic here
+  };
+
+  const handleUpdateCancel = () => {
+    console.log("Update cancelled");
+    setIsUpdateModalOpen(false);
+  };
+
+  // Ping modal handlers
+  const handlePingOk = () => {
+    console.log("Ping confirmed");
+    setIsPingModalOpen(false);
+    // Add your ping logic here
+  };
+
+  const handlePingCancel = () => {
+    console.log("Ping cancelled");
+    setIsPingModalOpen(false);
+  };
+
+  // Add modal handlers
+  const handleAddOk = () => {
+    console.log("Add confirmed");
+    setIsAddModalOpen(false);
+    // Add your add logic here
+  };
+
+  const handleAddCancel = () => {
+    console.log("Add cancelled");
+    setIsAddModalOpen(false);
+  };
+
+  // Move (One Click Remove) modal handlers
+  const handleMoveOk = () => {
+    console.log("One Click Remove confirmed");
+    setIsMoveModalOpen(false);
+    // Add your remove logic here
+  };
+
+  const handleMoveCancel = () => {
+    console.log("One Click Remove cancelled");
+    setIsMoveModalOpen(false);
   };
 
   const handleOk = (data) => {
@@ -305,19 +364,28 @@ const Table = () => {
               icon={<UploadOutlined />}
               type="primary"
               className="update-button"
+              onClick={() => setIsUpdateModalOpen(true)}
             >
               Update
             </Button>
             <span>Last updated: 2025-10-8 16:20 32</span>
           </div>
           <div className="update-button-content">
-            <Button type="primary" className="ping-button">
+            <Button
+              type="primary"
+              className="ping-button"
+              onClick={() => setIsPingModalOpen(true)}
+            >
               Ping
             </Button>
             <span>Last ping: 2025-10-8 16:20 32</span>
           </div>
         </div>
-        <Button type="primary" className="oneclick-button">
+        <Button
+          type="primary"
+          className="oneclick-button"
+          onClick={() => setIsMoveModalOpen(true)}
+        >
           One Click Remove
         </Button>
       </div>
@@ -361,6 +429,26 @@ const Table = () => {
         open={isDeleteModalOpen}
         onOk={handleDeleteOk}
         onCancel={handleDeleteCancel}
+      />
+      <StoreUpdate
+        open={isUpdateModalOpen}
+        onOk={handleUpdateOk}
+        onCancel={handleUpdateCancel}
+      />
+      <StorePing
+        open={isPingModalOpen}
+        onOk={handlePingOk}
+        onCancel={handlePingCancel}
+      />
+      <StoreAdd
+        open={isAddModalOpen}
+        onOk={handleAddOk}
+        onCancel={handleAddCancel}
+      />
+      <StoreMove
+        open={isMoveModalOpen}
+        onOk={handleMoveOk}
+        onCancel={handleMoveCancel}
       />
     </div>
   );

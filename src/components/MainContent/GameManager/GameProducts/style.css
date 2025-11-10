@@ -1053,3 +1053,86 @@
   width: 107px;
   height: 120px;
 }
+
+/* Product hover effects */
+.product {
+  position: relative;
+  cursor: pointer;
+}
+
+.product-image-container {
+  position: relative;
+  width: 107px;
+  height: 120px;
+  overflow: hidden;
+}
+
+.product-image {
+  width: 107px;
+  height: 120px;
+  object-fit: cover;
+  transition: filter 0.3s ease;
+}
+
+.product-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+  z-index: 10;
+}
+
+.product:hover .product-image {
+  filter: blur(4px);
+}
+
+.product:hover .product-overlay {
+  opacity: 1;
+  visibility: visible;
+}
+
+.product-action-btn {
+  width: 80px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.product-launch-btn {
+  background-color: #1677ff !important;
+  border-color: #1677ff !important;
+  color: #fff !important;
+}
+
+.product-launch-btn:hover {
+  background-color: #4096ff !important;
+  border-color: #4096ff !important;
+}
+
+.product-edit-btn {
+  background-color: #0958d9 !important;
+  border-color: #0958d9 !important;
+  color: #fff !important;
+}
+
+.product-edit-btn:hover {
+  background-color: #1677ff !important;
+  border-color: #1677ff !important;
+}

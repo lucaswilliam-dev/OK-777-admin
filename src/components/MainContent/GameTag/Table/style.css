@@ -496,28 +496,30 @@
 
 .delete-modal-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
   margin-bottom: 0;
 }
 
 .delete-warning-icon {
-  width: 22px;
-  height: 22px;
-  min-width: 22px;
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
   background-color: #ff9800;
-  font-size: 30px;
   border-radius: 50%;
-  color: #ffffff;
-  font-size: 14px;
+  flex-shrink: 0;
 }
 
-/* .delete-warning-icon .anticon {
+.delete-warning-icon .anticon {
   color: #ffffff;
-} */
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
 .delete-modal-question {
   font-size: 16px;
@@ -525,6 +527,7 @@
   line-height: 22px;
   flex: 1;
   padding-top: 0;
+  margin: 0;
 }
 
 .delete-confirm-modal .ant-modal-footer {

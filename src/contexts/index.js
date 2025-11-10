@@ -16,7 +16,7 @@ const initialState = {
     dataSource: [
       {
         key: "1",
-        id: 23,  
+        id: 23,
         name: "Slot",
         icon: "/logo512.png",
         state: true,
@@ -54,8 +54,7 @@ const initialState = {
         state: true,
         createTime: "2021-02-28 10:30",
       },
-      
-    ],  
+    ],
     pagination: {
       currentPage: 51,
       pageSize: 10,
@@ -247,7 +246,9 @@ export const AppProvider = ({ children }) => {
       ...prev,
       gameCategory: {
         ...prev.gameCategory,
-        dataSource: prev.gameCategory.dataSource.filter((item) => item.key !== key),
+        dataSource: prev.gameCategory.dataSource.filter(
+          (item) => item.key !== key
+        ),
         pagination: {
           ...prev.gameCategory.pagination,
           totalItems: prev.gameCategory.pagination.totalItems - 1,
@@ -511,19 +512,22 @@ export const AppProvider = ({ children }) => {
     }));
   }, []);
 
-  const openModuleModal = useCallback((moduleName, modalType, editingItem = null) => {
-    setState((prev) => ({
-      ...prev,
-      [moduleName]: {
-        ...prev[moduleName],
-        modals: {
-          ...prev[moduleName].modals,
-          [modalType]: true,
-          editingItem,
+  const openModuleModal = useCallback(
+    (moduleName, modalType, editingItem = null) => {
+      setState((prev) => ({
+        ...prev,
+        [moduleName]: {
+          ...prev[moduleName],
+          modals: {
+            ...prev[moduleName].modals,
+            [modalType]: true,
+            editingItem,
+          },
         },
-      },
-    }));
-  }, []);
+      }));
+    },
+    []
+  );
 
   const closeModuleModal = useCallback((moduleName, modalType) => {
     setState((prev) => ({
@@ -591,4 +595,3 @@ export const useAppContext = () => {
 
 // Export default context for direct access if needed
 export default AppContext;
-

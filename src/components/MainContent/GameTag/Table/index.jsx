@@ -1,14 +1,10 @@
 import React, { useState } from "react";
 import { Table as AntTable, Switch, Space, Button, Modal, Select } from "antd";
-import AddOrEditModal from "../../../Modal/AddOrEditModal";
+import TagEditModal from "../../../Modal/TagEditModal";
 import { ExclamationCircleFilled } from "@ant-design/icons";
 import "./style.css";
 
 const Table = () => {
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize] = useState(10);
-  const totalItems = 2;
-
   const [dataSource, setDataSource] = useState([
     {
       key: "1",
@@ -125,8 +121,7 @@ const Table = () => {
           <p
             className="edit-link"
             onClick={() => {
-              createModalShow();
-              // You can set editing item here if needed
+              createModalShow(record);
             }}
           >
             Edit
@@ -147,8 +142,10 @@ const Table = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [editingTag, setEditingTag] = useState(null);
 
-  const createModalShow = () => {
+  const createModalShow = (tag = null) => {
+    setEditingTag(tag);
     setIsModalOpen(true);
   };
 
@@ -171,12 +168,35 @@ const Table = () => {
   const handleOk = (data) => {
     // Handle form submission here
     console.log("Name:", data.name);
-    console.log("Visibility:", data.visibility);
+    console.log("Icon:", data.icon);
+    if (editingTag) {
+      // Update existing tag
+      setDataSource(
+        dataSource.map((item) =>
+          item.key === editingTag.key
+            ? { ...item, name: data.name, icon: data.icon }
+            : item
+        )
+      );
+    } else {
+      // Add new tag
+      const newTag = {
+        key: Date.now().toString(),
+        id: Date.now(),
+        name: data.name,
+        icon: data.icon,
+        state: true,
+        createTime: new Date().toLocaleString(),
+      };
+      setDataSource([...dataSource, newTag]);
+    }
     setIsModalOpen(false);
+    setEditingTag(null);
   };
 
   const handleCancel = () => {
     setIsModalOpen(false);
+    setEditingTag(null);
   };
 
   return (
@@ -211,12 +231,11 @@ const Table = () => {
           scroll={{ x: "max-content", y: 106 * 5 }}
         />
       </div>
-      <AddOrEditModal
+      <TagEditModal
         open={isModalOpen}
         onOk={handleOk}
         onCancel={handleCancel}
-        initialName=""
-        initialVisibility={["EN", "ZH"]}
+        initialData={editingTag}
       />
       <Modal
         title={null}
@@ -236,7 +255,7 @@ const Table = () => {
               <ExclamationCircleFilled />
             </div>
             <span className="delete-modal-question">
-              Should the game be removed from game provider?
+              Are you sure you want to Delete tag?
             </span>
           </div>
         </div>

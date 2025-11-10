@@ -1,7 +1,12 @@
 import React, { useState } from "react";
 import { Button, Pagination, Modal, Input, Select, DatePicker } from "antd";
-import AddOrEditModal from "../../../Modal/AddOrEditModal";
-import { ExclamationCircleFilled, SearchOutlined } from "@ant-design/icons";
+import ManagerEditModal from "../../../Modal/ManagerEditModal";
+import {
+  ExclamationCircleFilled,
+  SearchOutlined,
+  PlayCircleOutlined,
+  EditOutlined,
+} from "@ant-design/icons";
 import "./style.css";
 
 const { RangePicker } = DatePicker;
@@ -13,6 +18,7 @@ const GameProducts = () => {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState(null);
 
   // Filter states
   const [gameName, setGameName] = useState("");
@@ -78,13 +84,33 @@ const GameProducts = () => {
 
   const handleOk = (data) => {
     // Handle form submission here
-    console.log("Name:", data.name);
+    console.log("Form data:", data);
+    console.log("ZH Name:", data.zhName);
+    console.log("EN Name:", data.enName);
+    console.log("Provider:", data.provider);
+    console.log("Category:", data.category);
+    console.log("Tags:", data.tags);
     console.log("Visibility:", data.visibility);
     setIsModalOpen(false);
+    setEditingProduct(null);
   };
 
   const handleCancel = () => {
     setIsModalOpen(false);
+    setEditingProduct(null);
+  };
+
+  const handleEditClick = (product) => {
+    setEditingProduct({
+      zhName: "1000x糖果大战",
+      enName: "1000x Candy Battle",
+      provider: "All",
+      category: "All",
+      tags: ["Hot", "New"],
+      visibility: ["EN", "ZH", "DE"],
+      coverImage: "/cat.jpg",
+    });
+    setIsModalOpen(true);
   };
 
   return (
@@ -142,7 +168,7 @@ const GameProducts = () => {
             >
               Search
             </Button>
-          </div>  
+          </div>
         </div>
         <div className="search-filter-row">
           <div className="filter-item">
@@ -156,6 +182,7 @@ const GameProducts = () => {
               separator="-"
             />
           </div>
+
           <div className="filter-item">
             <span className="filter-label">Visibility:</span>
             <Select
@@ -172,8 +199,26 @@ const GameProducts = () => {
       <div className="table-wrapper1">
         <div className="products">
           <div className="product">
-            <div>
-              <img src="/cat.jpg" alt="" id="cat-img" />
+            <div className="product-image-container">
+              <img src="/cat.jpg" alt="" className="product-image" />
+              <div className="product-overlay">
+                <Button
+                  type="primary"
+                  icon={<PlayCircleOutlined />}
+                  className="product-action-btn product-launch-btn"
+                  onClick={() => console.log("Lunch clicked")}
+                >
+                  Lunch
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<EditOutlined />}
+                  className="product-action-btn product-edit-btn"
+                  onClick={() => handleEditClick()}
+                >
+                  Edit
+                </Button>
+              </div>
             </div>
             <div className="product-label">
               <p className="cn">CN:糖果大战</p>
@@ -181,8 +226,26 @@ const GameProducts = () => {
             </div>
           </div>
           <div className="product">
-            <div>
-              <img src="/cat.jpg" alt="" id="cat-img" />
+            <div className="product-image-container">
+              <img src="/cat.jpg" alt="" className="product-image" />
+              <div className="product-overlay">
+                <Button
+                  type="primary"
+                  icon={<PlayCircleOutlined />}
+                  className="product-action-btn product-launch-btn"
+                  onClick={() => console.log("Lunch clicked")}
+                >
+                  Lunch
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<EditOutlined />}
+                  className="product-action-btn product-edit-btn"
+                  onClick={() => handleEditClick()}
+                >
+                  Edit
+                </Button>
+              </div>
             </div>
             <div className="product-label">
               <p className="cn">CN:糖果大战</p>
@@ -190,8 +253,26 @@ const GameProducts = () => {
             </div>
           </div>
           <div className="product">
-            <div>
-              <img src="/cat.jpg" alt="" id="cat-img" />
+            <div className="product-image-container">
+              <img src="/cat.jpg" alt="" className="product-image" />
+              <div className="product-overlay">
+                <Button
+                  type="primary"
+                  icon={<PlayCircleOutlined />}
+                  className="product-action-btn product-launch-btn"
+                  onClick={() => console.log("Lunch clicked")}
+                >
+                  Lunch
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<EditOutlined />}
+                  className="product-action-btn product-edit-btn"
+                  onClick={() => handleEditClick()}
+                >
+                  Edit
+                </Button>
+              </div>
             </div>
             <div className="product-label">
               <p className="cn">CN:糖果大战</p>
@@ -199,8 +280,26 @@ const GameProducts = () => {
             </div>
           </div>
           <div className="product">
-            <div>
-              <img src="/cat.jpg" alt="" id="cat-img" />
+            <div className="product-image-container">
+              <img src="/cat.jpg" alt="" className="product-image" />
+              <div className="product-overlay">
+                <Button
+                  type="primary"
+                  icon={<PlayCircleOutlined />}
+                  className="product-action-btn product-launch-btn"
+                  onClick={() => console.log("Lunch clicked")}
+                >
+                  Lunch
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<EditOutlined />}
+                  className="product-action-btn product-edit-btn"
+                  onClick={() => handleEditClick()}
+                >
+                  Edit
+                </Button>
+              </div>
             </div>
             <div className="product-label">
               <p className="cn">CN:糖果大战</p>
@@ -208,8 +307,26 @@ const GameProducts = () => {
             </div>
           </div>
           <div className="product">
-            <div>
-              <img src="/cat.jpg" alt="" id="cat-img" />
+            <div className="product-image-container">
+              <img src="/cat.jpg" alt="" className="product-image" />
+              <div className="product-overlay">
+                <Button
+                  type="primary"
+                  icon={<PlayCircleOutlined />}
+                  className="product-action-btn product-launch-btn"
+                  onClick={() => console.log("Lunch clicked")}
+                >
+                  Lunch
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<EditOutlined />}
+                  className="product-action-btn product-edit-btn"
+                  onClick={() => handleEditClick()}
+                >
+                  Edit
+                </Button>
+              </div>
             </div>
             <div className="product-label">
               <p className="cn">CN:糖果大战</p>
@@ -217,8 +334,26 @@ const GameProducts = () => {
             </div>
           </div>
           <div className="product">
-            <div>
-              <img src="/cat.jpg" alt="" id="cat-img" />
+            <div className="product-image-container">
+              <img src="/cat.jpg" alt="" className="product-image" />
+              <div className="product-overlay">
+                <Button
+                  type="primary"
+                  icon={<PlayCircleOutlined />}
+                  className="product-action-btn product-launch-btn"
+                  onClick={() => console.log("Lunch clicked")}
+                >
+                  Lunch
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<EditOutlined />}
+                  className="product-action-btn product-edit-btn"
+                  onClick={() => handleEditClick()}
+                >
+                  Edit
+                </Button>
+              </div>
             </div>
             <div className="product-label">
               <p className="cn">CN:糖果大战</p>
@@ -226,8 +361,26 @@ const GameProducts = () => {
             </div>
           </div>
           <div className="product">
-            <div>
-              <img src="/cat.jpg" alt="" id="cat-img" />
+            <div className="product-image-container">
+              <img src="/cat.jpg" alt="" className="product-image" />
+              <div className="product-overlay">
+                <Button
+                  type="primary"
+                  icon={<PlayCircleOutlined />}
+                  className="product-action-btn product-launch-btn"
+                  onClick={() => console.log("Lunch clicked")}
+                >
+                  Lunch
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<EditOutlined />}
+                  className="product-action-btn product-edit-btn"
+                  onClick={() => handleEditClick()}
+                >
+                  Edit
+                </Button>
+              </div>
             </div>
             <div className="product-label">
               <p className="cn">CN:糖果大战</p>
@@ -235,8 +388,26 @@ const GameProducts = () => {
             </div>
           </div>
           <div className="product">
-            <div>
-              <img src="/cat.jpg" alt="" id="cat-img" />
+            <div className="product-image-container">
+              <img src="/cat.jpg" alt="" className="product-image" />
+              <div className="product-overlay">
+                <Button
+                  type="primary"
+                  icon={<PlayCircleOutlined />}
+                  className="product-action-btn product-launch-btn"
+                  onClick={() => console.log("Lunch clicked")}
+                >
+                  Lunch
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<EditOutlined />}
+                  className="product-action-btn product-edit-btn"
+                  onClick={() => handleEditClick()}
+                >
+                  Edit
+                </Button>
+              </div>
             </div>
             <div className="product-label">
               <p className="cn">CN:糖果大战</p>
@@ -244,8 +415,26 @@ const GameProducts = () => {
             </div>
           </div>
           <div className="product">
-            <div>
-              <img src="/cat.jpg" alt="" id="cat-img" />
+            <div className="product-image-container">
+              <img src="/cat.jpg" alt="" className="product-image" />
+              <div className="product-overlay">
+                <Button
+                  type="primary"
+                  icon={<PlayCircleOutlined />}
+                  className="product-action-btn product-launch-btn"
+                  onClick={() => console.log("Lunch clicked")}
+                >
+                  Lunch
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<EditOutlined />}
+                  className="product-action-btn product-edit-btn"
+                  onClick={() => handleEditClick()}
+                >
+                  Edit
+                </Button>
+              </div>
             </div>
             <div className="product-label">
               <p className="cn">CN:糖果大战</p>
@@ -253,8 +442,26 @@ const GameProducts = () => {
             </div>
           </div>
           <div className="product">
-            <div>
-              <img src="/cat.jpg" alt="" id="cat-img" />
+            <div className="product-image-container">
+              <img src="/cat.jpg" alt="" className="product-image" />
+              <div className="product-overlay">
+                <Button
+                  type="primary"
+                  icon={<PlayCircleOutlined />}
+                  className="product-action-btn product-launch-btn"
+                  onClick={() => console.log("Lunch clicked")}
+                >
+                  Lunch
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<EditOutlined />}
+                  className="product-action-btn product-edit-btn"
+                  onClick={() => handleEditClick()}
+                >
+                  Edit
+                </Button>
+              </div>
             </div>
             <div className="product-label">
               <p className="cn">CN:糖果大战</p>
@@ -262,8 +469,26 @@ const GameProducts = () => {
             </div>
           </div>
           <div className="product">
-            <div>
-              <img src="/cat.jpg" alt="" id="cat-img" />
+            <div className="product-image-container">
+              <img src="/cat.jpg" alt="" className="product-image" />
+              <div className="product-overlay">
+                <Button
+                  type="primary"
+                  icon={<PlayCircleOutlined />}
+                  className="product-action-btn product-launch-btn"
+                  onClick={() => console.log("Lunch clicked")}
+                >
+                  Lunch
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<EditOutlined />}
+                  className="product-action-btn product-edit-btn"
+                  onClick={() => handleEditClick()}
+                >
+                  Edit
+                </Button>
+              </div>
             </div>
             <div className="product-label">
               <p className="cn">CN:糖果大战</p>
@@ -271,8 +496,26 @@ const GameProducts = () => {
             </div>
           </div>
           <div className="product">
-            <div>
-              <img src="/cat.jpg" alt="" id="cat-img" />
+            <div className="product-image-container">
+              <img src="/cat.jpg" alt="" className="product-image" />
+              <div className="product-overlay">
+                <Button
+                  type="primary"
+                  icon={<PlayCircleOutlined />}
+                  className="product-action-btn product-launch-btn"
+                  onClick={() => console.log("Lunch clicked")}
+                >
+                  Lunch
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<EditOutlined />}
+                  className="product-action-btn product-edit-btn"
+                  onClick={() => handleEditClick()}
+                >
+                  Edit
+                </Button>
+              </div>
             </div>
             <div className="product-label">
               <p className="cn">CN:糖果大战</p>
@@ -280,8 +523,26 @@ const GameProducts = () => {
             </div>
           </div>
           <div className="product">
-            <div>
-              <img src="/cat.jpg" alt="" id="cat-img" />
+            <div className="product-image-container">
+              <img src="/cat.jpg" alt="" className="product-image" />
+              <div className="product-overlay">
+                <Button
+                  type="primary"
+                  icon={<PlayCircleOutlined />}
+                  className="product-action-btn product-launch-btn"
+                  onClick={() => console.log("Lunch clicked")}
+                >
+                  Lunch
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<EditOutlined />}
+                  className="product-action-btn product-edit-btn"
+                  onClick={() => handleEditClick()}
+                >
+                  Edit
+                </Button>
+              </div>
             </div>
             <div className="product-label">
               <p className="cn">CN:糖果大战</p>
@@ -289,8 +550,26 @@ const GameProducts = () => {
             </div>
           </div>
           <div className="product">
-            <div>
-              <img src="/cat.jpg" alt="" id="cat-img" />
+            <div className="product-image-container">
+              <img src="/cat.jpg" alt="" className="product-image" />
+              <div className="product-overlay">
+                <Button
+                  type="primary"
+                  icon={<PlayCircleOutlined />}
+                  className="product-action-btn product-launch-btn"
+                  onClick={() => console.log("Lunch clicked")}
+                >
+                  Lunch
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<EditOutlined />}
+                  className="product-action-btn product-edit-btn"
+                  onClick={() => handleEditClick()}
+                >
+                  Edit
+                </Button>
+              </div>
             </div>
             <div className="product-label">
               <p className="cn">CN:糖果大战</p>
@@ -298,8 +577,26 @@ const GameProducts = () => {
             </div>
           </div>
           <div className="product">
-            <div>
-              <img src="/cat.jpg" alt="" id="cat-img" />
+            <div className="product-image-container">
+              <img src="/cat.jpg" alt="" className="product-image" />
+              <div className="product-overlay">
+                <Button
+                  type="primary"
+                  icon={<PlayCircleOutlined />}
+                  className="product-action-btn product-launch-btn"
+                  onClick={() => console.log("Lunch clicked")}
+                >
+                  Lunch
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<EditOutlined />}
+                  className="product-action-btn product-edit-btn"
+                  onClick={() => handleEditClick()}
+                >
+                  Edit
+                </Button>
+              </div>
             </div>
             <div className="product-label">
               <p className="cn">CN:糖果大战</p>
@@ -307,8 +604,26 @@ const GameProducts = () => {
             </div>
           </div>
           <div className="product">
-            <div>
-              <img src="/cat.jpg" alt="" id="cat-img" />
+            <div className="product-image-container">
+              <img src="/cat.jpg" alt="" className="product-image" />
+              <div className="product-overlay">
+                <Button
+                  type="primary"
+                  icon={<PlayCircleOutlined />}
+                  className="product-action-btn product-launch-btn"
+                  onClick={() => console.log("Lunch clicked")}
+                >
+                  Lunch
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<EditOutlined />}
+                  className="product-action-btn product-edit-btn"
+                  onClick={() => handleEditClick()}
+                >
+                  Edit
+                </Button>
+              </div>
             </div>
             <div className="product-label">
               <p className="cn">CN:糖果大战</p>
@@ -316,8 +631,26 @@ const GameProducts = () => {
             </div>
           </div>
           <div className="product">
-            <div>
-              <img src="/cat.jpg" alt="" id="cat-img" />
+            <div className="product-image-container">
+              <img src="/cat.jpg" alt="" className="product-image" />
+              <div className="product-overlay">
+                <Button
+                  type="primary"
+                  icon={<PlayCircleOutlined />}
+                  className="product-action-btn product-launch-btn"
+                  onClick={() => console.log("Lunch clicked")}
+                >
+                  Lunch
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<EditOutlined />}
+                  className="product-action-btn product-edit-btn"
+                  onClick={() => handleEditClick()}
+                >
+                  Edit
+                </Button>
+              </div>
             </div>
             <div className="product-label">
               <p className="cn">CN:糖果大战</p>
@@ -325,8 +658,26 @@ const GameProducts = () => {
             </div>
           </div>
           <div className="product">
-            <div>
-              <img src="/cat.jpg" alt="" id="cat-img" />
+            <div className="product-image-container">
+              <img src="/cat.jpg" alt="" className="product-image" />
+              <div className="product-overlay">
+                <Button
+                  type="primary"
+                  icon={<PlayCircleOutlined />}
+                  className="product-action-btn product-launch-btn"
+                  onClick={() => console.log("Lunch clicked")}
+                >
+                  Lunch
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<EditOutlined />}
+                  className="product-action-btn product-edit-btn"
+                  onClick={() => handleEditClick()}
+                >
+                  Edit
+                </Button>
+              </div>
             </div>
             <div className="product-label">
               <p className="cn">CN:糖果大战</p>
@@ -334,8 +685,26 @@ const GameProducts = () => {
             </div>
           </div>
           <div className="product">
-            <div>
-              <img src="/cat.jpg" alt="" id="cat-img" />
+            <div className="product-image-container">
+              <img src="/cat.jpg" alt="" className="product-image" />
+              <div className="product-overlay">
+                <Button
+                  type="primary"
+                  icon={<PlayCircleOutlined />}
+                  className="product-action-btn product-launch-btn"
+                  onClick={() => console.log("Lunch clicked")}
+                >
+                  Lunch
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<EditOutlined />}
+                  className="product-action-btn product-edit-btn"
+                  onClick={() => handleEditClick()}
+                >
+                  Edit
+                </Button>
+              </div>
             </div>
             <div className="product-label">
               <p className="cn">CN:糖果大战</p>
@@ -343,8 +712,26 @@ const GameProducts = () => {
             </div>
           </div>
           <div className="product">
-            <div>
-              <img src="/cat.jpg" alt="" id="cat-img" />
+            <div className="product-image-container">
+              <img src="/cat.jpg" alt="" className="product-image" />
+              <div className="product-overlay">
+                <Button
+                  type="primary"
+                  icon={<PlayCircleOutlined />}
+                  className="product-action-btn product-launch-btn"
+                  onClick={() => console.log("Lunch clicked")}
+                >
+                  Lunch
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<EditOutlined />}
+                  className="product-action-btn product-edit-btn"
+                  onClick={() => handleEditClick()}
+                >
+                  Edit
+                </Button>
+              </div>
             </div>
             <div className="product-label">
               <p className="cn">CN:糖果大战</p>
@@ -352,8 +739,26 @@ const GameProducts = () => {
             </div>
           </div>
           <div className="product">
-            <div>
-              <img src="/cat.jpg" alt="" id="cat-img" />
+            <div className="product-image-container">
+              <img src="/cat.jpg" alt="" className="product-image" />
+              <div className="product-overlay">
+                <Button
+                  type="primary"
+                  icon={<PlayCircleOutlined />}
+                  className="product-action-btn product-launch-btn"
+                  onClick={() => console.log("Lunch clicked")}
+                >
+                  Lunch
+                </Button>
+                <Button
+                  type="primary"
+                  icon={<EditOutlined />}
+                  className="product-action-btn product-edit-btn"
+                  onClick={() => handleEditClick()}
+                >
+                  Edit
+                </Button>
+              </div>
             </div>
             <div className="product-label">
               <p className="cn">CN:糖果大战</p>
@@ -384,12 +789,11 @@ const GameProducts = () => {
           />
         </div>
       </div>
-      <AddOrEditModal
+      <ManagerEditModal
         open={isModalOpen}
         onOk={handleOk}
         onCancel={handleCancel}
-        initialName=""
-        initialVisibility={["EN", "ZH"]}
+        initialData={editingProduct}
       />
       <Modal
         title={null}
