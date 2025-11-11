@@ -23,7 +23,7 @@ const StorePing = ({ open, onOk, onCancel }) => {
             <ExclamationCircleFilled />
           </div>
           <span className="delete-modal-question">
-            Are you sure you want to ping the game store?
+            Are you sure you want to ping All game?
           </span>
         </div>
       </div>

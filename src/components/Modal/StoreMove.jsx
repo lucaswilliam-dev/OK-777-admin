@@ -23,7 +23,8 @@ const StoreMove = ({ open, onOk, onCancel }) => {
             <ExclamationCircleFilled />
           </div>
           <span className="delete-modal-question">
-            Are you sure you want to remove all items from the game store?
+            Are you sure you want to remove all the state is "Available", but the
+            game is in "Offline" to connect" state.
           </span>
         </div>
       </div>

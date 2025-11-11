@@ -23,7 +23,7 @@ const StoreAdd = ({ open, onOk, onCancel }) => {
             <ExclamationCircleFilled />
           </div>
           <span className="delete-modal-question">
-            Are you sure you want to add to the game store?
+            Are you sure you want to add game AAAbbb?
           </span>
         </div>
       </div>
@@ -32,4 +32,3 @@ const StoreAdd = ({ open, onOk, onCancel }) => {
 };
 
 export default StoreAdd;
-
