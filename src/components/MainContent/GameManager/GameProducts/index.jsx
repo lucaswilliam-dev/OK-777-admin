@@ -13,10 +13,7 @@ import "./style.css";
 const { RangePicker } = DatePicker;
 
 const GameProducts = () => {
-  const {
-    state,
-    setGameManagerCurrentPage,
-  } = useAppContext();
+  const { state, setGameManagerCurrentPage } = useAppContext();
 
   const { pagination } = state.gameManager;
   const { currentPage, pageSize, totalItems } = pagination;
@@ -164,18 +161,16 @@ const GameProducts = () => {
               options={tagOptions}
             />
           </div>
-          <div className="search-button-container">
-            <Button
-              type="primary"
-              icon={<SearchOutlined />}
-              onClick={handleSearch}
-              className="search-button"
-            >
-              Search
-            </Button>
-          </div>
+          <Button
+            type="primary"
+            icon={<SearchOutlined />}
+            onClick={handleSearch}
+            className="search-button"
+          >
+            Search
+          </Button>
         </div>
-        <div className="search-filter-row">
+        <div className="search-filter-row search-filter-row-gap">
           <div className="filter-item">
             <span className="filter-label">CreateTime:</span>
             <RangePicker

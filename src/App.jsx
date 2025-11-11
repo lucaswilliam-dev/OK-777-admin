@@ -8,6 +8,7 @@ import GameProvider from "./components/MainContent/GameProvider";
 import GameManager from "./components/MainContent/GameManager";
 import GameStore from "./components/MainContent/GameStore";
 import GameTag from "./components/MainContent/GameTag";
+import "./style/responsive.css"
 
 const App = () => {
   return (
