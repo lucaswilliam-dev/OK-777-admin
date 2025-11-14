@@ -1,26 +1,56 @@
-import React, { useState } from "react";
-import { Button, Pagination, Modal, Input, Select, DatePicker } from "antd";
-import ManagerEditModal from "../../../Modal/ManagerEditModal";
+import React, { useState, useEffect } from "react";
 import {
-  ExclamationCircleFilled,
-  SearchOutlined,
-  PlayCircleOutlined,
-  EditOutlined,
-} from "@ant-design/icons";
+  Button,
+  Pagination,
+  Modal,
+  Input,
+  Select,
+  DatePicker,
+  Spin,
+  message,
+} from "antd";
+import ManagerEditModal from "../../../Modal/ManagerEditModal";
+import { ExclamationCircleFilled, SearchOutlined } from "@ant-design/icons";
 import { useAppContext } from "../../../../contexts";
+import Product from "../Product";
+import apiService from "../../../../services/api";
 import "./style.css";
 
 const { RangePicker } = DatePicker;
 
 const GameProducts = () => {
-  const { state, setGameManagerCurrentPage } = useAppContext();
+  const { state, setGameManagerCurrentPage, fetchGames } = useAppContext();
 
-  const { pagination } = state.gameManager;
+  // Get data from global context (all backend data is processed here)
+  const { dataSource, loading, error, pagination } = state.gameManager;
   const { currentPage, pageSize, totalItems } = pagination;
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+  const [launchingGame, setLaunchingGame] = useState(false);
+
+  // Fetch games from backend when component mounts
+  // All data processing happens in context
+  useEffect(() => {
+    const loadGames = async () => {
+      const result = await fetchGames(1020);
+      if (!result.success) {
+        message.error(
+          result.error ||
+            "Failed to load games. Please check if the backend is running."
+        );
+      } else if (result.data && result.data.length === 0) {
+        message.warning("No games found");
+      }
+    };
+
+    // Only fetch if dataSource is empty (not already loaded)
+    if (dataSource.length === 0 && !loading) {
+      loadGames();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Fetch once on mount - fetchGames is stable from context
 
   // Filter states
   const [gameName, setGameName] = useState("");
@@ -104,15 +134,52 @@ const GameProducts = () => {
 
   const handleEditClick = (product) => {
     setEditingProduct({
-      zhName: "1000x糖果大战",
-      enName: "1000x Candy Battle",
-      provider: "All",
-      category: "All",
-      tags: ["Hot", "New"],
-      visibility: ["EN", "ZH", "DE"],
-      coverImage: "/cat.jpg",
+      zhName: product?.cnName || product?.gameName || "",
+      enName: product?.enName || product?.gameName || "",
+      provider: product?.productCode?.toString() || "All",
+      category: product?.gameType || "All",
+      tags: ["Hot", "New"], // TODO: Get from product data if available
+      visibility: ["EN", "ZH", "DE"], // TODO: Get from product data if available
+      coverImage: product?.image || "/cat.jpg",
+      gameCode: product?.gameCode,
+      fullData: product?.fullData,
     });
     setIsModalOpen(true);
+  };
+
+  const handleLaunchClick = async (product) => {
+    console.log(product);
+    // Check if required game data is available
+    if (!product.gameCode || !product.gameType || !product.productCode) {
+      message.error("Missing game information. Cannot launch game.");
+      return;
+    }
+    setLaunchingGame(true);
+    try {
+      const response = await apiService.launchGame({
+        gameCode: product.gameCode,
+        gameType: product.gameType,
+        productCode: product.productCode,
+        currency: "IDR",
+        languageCode: 0,
+      });
+
+      if (response.success && response.url) {
+        // Open game in new window/tab
+        window.open(response.url, "_blank", "noopener,noreferrer");
+        message.success("Game launched successfully!");
+      } else {
+        message.error(response.message || "Failed to launch game");
+      }
+    } catch (error) {
+      console.error("Launch game error:", error);
+      const errorMessage =
+        error.message ||
+        "Failed to launch game. Please check your authentication.";
+      message.error(errorMessage);
+    } finally {
+      setLaunchingGame(false);
+    }
   };
 
   return (
@@ -197,575 +264,57 @@ const GameProducts = () => {
       </div>
       <div className="line"></div>
       <div className="table-wrapper1">
-        <div className="products">
-          <div className="product">
-            <div className="product-image-container">
-              <img src="/cat.jpg" alt="" className="product-image" />
-              <div className="product-overlay">
-                <Button
-                  type="primary"
-                  icon={<PlayCircleOutlined />}
-                  className="product-action-btn product-launch-btn"
-                  onClick={() => console.log("Lunch clicked")}
-                >
-                  Lunch
-                </Button>
-                <Button
-                  type="primary"
-                  icon={<EditOutlined />}
-                  className="product-action-btn product-edit-btn"
-                  onClick={() => handleEditClick()}
-                >
-                  Edit
-                </Button>
-              </div>
-            </div>
-            <div className="product-label">
-              <p className="cn">CN:糖果大战</p>
-              <p className="en">EN:Candy Wars</p>
-            </div>
+        {loading ? (
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              minHeight: "400px",
+            }}
+          >
+            <Spin size="large" tip="Loading games..." />
           </div>
-          <div className="product">
-            <div className="product-image-container">
-              <img src="/cat.jpg" alt="" className="product-image" />
-              <div className="product-overlay">
-                <Button
-                  type="primary"
-                  icon={<PlayCircleOutlined />}
-                  className="product-action-btn product-launch-btn"
-                  onClick={() => console.log("Lunch clicked")}
-                >
-                  Lunch
-                </Button>
-                <Button
-                  type="primary"
-                  icon={<EditOutlined />}
-                  className="product-action-btn product-edit-btn"
-                  onClick={() => handleEditClick()}
-                >
-                  Edit
-                </Button>
-              </div>
-            </div>
-            <div className="product-label">
-              <p className="cn">CN:糖果大战</p>
-              <p className="en">EN:Candy Wars</p>
-            </div>
+        ) : error ? (
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              minHeight: "400px",
+              flexDirection: "column",
+            }}
+          >
+            <p style={{ color: "red", marginBottom: "16px" }}>Error: {error}</p>
+            <Button type="primary" onClick={() => window.location.reload()}>
+              Retry
+            </Button>
           </div>
-          <div className="product">
-            <div className="product-image-container">
-              <img src="/cat.jpg" alt="" className="product-image" />
-              <div className="product-overlay">
-                <Button
-                  type="primary"
-                  icon={<PlayCircleOutlined />}
-                  className="product-action-btn product-launch-btn"
-                  onClick={() => console.log("Lunch clicked")}
-                >
-                  Lunch
-                </Button>
-                <Button
-                  type="primary"
-                  icon={<EditOutlined />}
-                  className="product-action-btn product-edit-btn"
-                  onClick={() => handleEditClick()}
-                >
-                  Edit
-                </Button>
-              </div>
-            </div>
-            <div className="product-label">
-              <p className="cn">CN:糖果大战</p>
-              <p className="en">EN:Candy Wars</p>
-            </div>
+        ) : dataSource.length === 0 ? (
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              minHeight: "400px",
+            }}
+          >
+            <p>No games found</p>
           </div>
-          <div className="product">
-            <div className="product-image-container">
-              <img src="/cat.jpg" alt="" className="product-image" />
-              <div className="product-overlay">
-                <Button
-                  type="primary"
-                  icon={<PlayCircleOutlined />}
-                  className="product-action-btn product-launch-btn"
-                  onClick={() => console.log("Lunch clicked")}
-                >
-                  Lunch
-                </Button>
-                <Button
-                  type="primary"
-                  icon={<EditOutlined />}
-                  className="product-action-btn product-edit-btn"
-                  onClick={() => handleEditClick()}
-                >
-                  Edit
-                </Button>
-              </div>
-            </div>
-            <div className="product-label">
-              <p className="cn">CN:糖果大战</p>
-              <p className="en">EN:Candy Wars</p>
-            </div>
+        ) : (
+          <div className="products">
+            {dataSource.map((product) => (
+              <Product
+                key={product.key}
+                image={product.image}
+                cnName={product.cnName}
+                enName={product.enName}
+                onLaunch={() => handleLaunchClick(product)}
+                onEdit={() => handleEditClick(product)}
+              />
+            ))}
           </div>
-          <div className="product">
-            <div className="product-image-container">
-              <img src="/cat.jpg" alt="" className="product-image" />
-              <div className="product-overlay">
-                <Button
-                  type="primary"
-                  icon={<PlayCircleOutlined />}
-                  className="product-action-btn product-launch-btn"
-                  onClick={() => console.log("Lunch clicked")}
-                >
-                  Lunch
-                </Button>
-                <Button
-                  type="primary"
-                  icon={<EditOutlined />}
-                  className="product-action-btn product-edit-btn"
-                  onClick={() => handleEditClick()}
-                >
-                  Edit
-                </Button>
-              </div>
-            </div>
-            <div className="product-label">
-              <p className="cn">CN:糖果大战</p>
-              <p className="en">EN:Candy Wars</p>
-            </div>
-          </div>
-          <div className="product">
-            <div className="product-image-container">
-              <img src="/cat.jpg" alt="" className="product-image" />
-              <div className="product-overlay">
-                <Button
-                  type="primary"
-                  icon={<PlayCircleOutlined />}
-                  className="product-action-btn product-launch-btn"
-                  onClick={() => console.log("Lunch clicked")}
-                >
-                  Lunch
-                </Button>
-                <Button
-                  type="primary"
-                  icon={<EditOutlined />}
-                  className="product-action-btn product-edit-btn"
-                  onClick={() => handleEditClick()}
-                >
-                  Edit
-                </Button>
-              </div>
-            </div>
-            <div className="product-label">
-              <p className="cn">CN:糖果大战</p>
-              <p className="en">EN:Candy Wars</p>
-            </div>
-          </div>
-          <div className="product">
-            <div className="product-image-container">
-              <img src="/cat.jpg" alt="" className="product-image" />
-              <div className="product-overlay">
-                <Button
-                  type="primary"
-                  icon={<PlayCircleOutlined />}
-                  className="product-action-btn product-launch-btn"
-                  onClick={() => console.log("Lunch clicked")}
-                >
-                  Lunch
-                </Button>
-                <Button
-                  type="primary"
-                  icon={<EditOutlined />}
-                  className="product-action-btn product-edit-btn"
-                  onClick={() => handleEditClick()}
-                >
-                  Edit
-                </Button>
-              </div>
-            </div>
-            <div className="product-label">
-              <p className="cn">CN:糖果大战</p>
-              <p className="en">EN:Candy Wars</p>
-            </div>
-          </div>
-          <div className="product">
-            <div className="product-image-container">
-              <img src="/cat.jpg" alt="" className="product-image" />
-              <div className="product-overlay">
-                <Button
-                  type="primary"
-                  icon={<PlayCircleOutlined />}
-                  className="product-action-btn product-launch-btn"
-                  onClick={() => console.log("Lunch clicked")}
-                >
-                  Lunch
-                </Button>
-                <Button
-                  type="primary"
-                  icon={<EditOutlined />}
-                  className="product-action-btn product-edit-btn"
-                  onClick={() => handleEditClick()}
-                >
-                  Edit
-                </Button>
-              </div>
-            </div>
-            <div className="product-label">
-              <p className="cn">CN:糖果大战</p>
-              <p className="en">EN:Candy Wars</p>
-            </div>
-          </div>
-          <div className="product">
-            <div className="product-image-container">
-              <img src="/cat.jpg" alt="" className="product-image" />
-              <div className="product-overlay">
-                <Button
-                  type="primary"
-                  icon={<PlayCircleOutlined />}
-                  className="product-action-btn product-launch-btn"
-                  onClick={() => console.log("Lunch clicked")}
-                >
-                  Lunch
-                </Button>
-                <Button
-                  type="primary"
-                  icon={<EditOutlined />}
-                  className="product-action-btn product-edit-btn"
-                  onClick={() => handleEditClick()}
-                >
-                  Edit
-                </Button>
-              </div>
-            </div>
-            <div className="product-label">
-              <p className="cn">CN:糖果大战</p>
-              <p className="en">EN:Candy Wars</p>
-            </div>
-          </div>
-          <div className="product">
-            <div className="product-image-container">
-              <img src="/cat.jpg" alt="" className="product-image" />
-              <div className="product-overlay">
-                <Button
-                  type="primary"
-                  icon={<PlayCircleOutlined />}
-                  className="product-action-btn product-launch-btn"
-                  onClick={() => console.log("Lunch clicked")}
-                >
-                  Lunch
-                </Button>
-                <Button
-                  type="primary"
-                  icon={<EditOutlined />}
-                  className="product-action-btn product-edit-btn"
-                  onClick={() => handleEditClick()}
-                >
-                  Edit
-                </Button>
-              </div>
-            </div>
-            <div className="product-label">
-              <p className="cn">CN:糖果大战</p>
-              <p className="en">EN:Candy Wars</p>
-            </div>
-          </div>
-          <div className="product">
-            <div className="product-image-container">
-              <img src="/cat.jpg" alt="" className="product-image" />
-              <div className="product-overlay">
-                <Button
-                  type="primary"
-                  icon={<PlayCircleOutlined />}
-                  className="product-action-btn product-launch-btn"
-                  onClick={() => console.log("Lunch clicked")}
-                >
-                  Lunch
-                </Button>
-                <Button
-                  type="primary"
-                  icon={<EditOutlined />}
-                  className="product-action-btn product-edit-btn"
-                  onClick={() => handleEditClick()}
-                >
-                  Edit
-                </Button>
-              </div>
-            </div>
-            <div className="product-label">
-              <p className="cn">CN:糖果大战</p>
-              <p className="en">EN:Candy Wars</p>
-            </div>
-          </div>
-          <div className="product">
-            <div className="product-image-container">
-              <img src="/cat.jpg" alt="" className="product-image" />
-              <div className="product-overlay">
-                <Button
-                  type="primary"
-                  icon={<PlayCircleOutlined />}
-                  className="product-action-btn product-launch-btn"
-                  onClick={() => console.log("Lunch clicked")}
-                >
-                  Lunch
-                </Button>
-                <Button
-                  type="primary"
-                  icon={<EditOutlined />}
-                  className="product-action-btn product-edit-btn"
-                  onClick={() => handleEditClick()}
-                >
-                  Edit
-                </Button>
-              </div>
-            </div>
-            <div className="product-label">
-              <p className="cn">CN:糖果大战</p>
-              <p className="en">EN:Candy Wars</p>
-            </div>
-          </div>
-          <div className="product">
-            <div className="product-image-container">
-              <img src="/cat.jpg" alt="" className="product-image" />
-              <div className="product-overlay">
-                <Button
-                  type="primary"
-                  icon={<PlayCircleOutlined />}
-                  className="product-action-btn product-launch-btn"
-                  onClick={() => console.log("Lunch clicked")}
-                >
-                  Lunch
-                </Button>
-                <Button
-                  type="primary"
-                  icon={<EditOutlined />}
-                  className="product-action-btn product-edit-btn"
-                  onClick={() => handleEditClick()}
-                >
-                  Edit
-                </Button>
-              </div>
-            </div>
-            <div className="product-label">
-              <p className="cn">CN:糖果大战</p>
-              <p className="en">EN:Candy Wars</p>
-            </div>
-          </div>
-          <div className="product">
-            <div className="product-image-container">
-              <img src="/cat.jpg" alt="" className="product-image" />
-              <div className="product-overlay">
-                <Button
-                  type="primary"
-                  icon={<PlayCircleOutlined />}
-                  className="product-action-btn product-launch-btn"
-                  onClick={() => console.log("Lunch clicked")}
-                >
-                  Lunch
-                </Button>
-                <Button
-                  type="primary"
-                  icon={<EditOutlined />}
-                  className="product-action-btn product-edit-btn"
-                  onClick={() => handleEditClick()}
-                >
-                  Edit
-                </Button>
-              </div>
-            </div>
-            <div className="product-label">
-              <p className="cn">CN:糖果大战</p>
-              <p className="en">EN:Candy Wars</p>
-            </div>
-          </div>
-          <div className="product">
-            <div className="product-image-container">
-              <img src="/cat.jpg" alt="" className="product-image" />
-              <div className="product-overlay">
-                <Button
-                  type="primary"
-                  icon={<PlayCircleOutlined />}
-                  className="product-action-btn product-launch-btn"
-                  onClick={() => console.log("Lunch clicked")}
-                >
-                  Lunch
-                </Button>
-                <Button
-                  type="primary"
-                  icon={<EditOutlined />}
-                  className="product-action-btn product-edit-btn"
-                  onClick={() => handleEditClick()}
-                >
-                  Edit
-                </Button>
-              </div>
-            </div>
-            <div className="product-label">
-              <p className="cn">CN:糖果大战</p>
-              <p className="en">EN:Candy Wars</p>
-            </div>
-          </div>
-          <div className="product">
-            <div className="product-image-container">
-              <img src="/cat.jpg" alt="" className="product-image" />
-              <div className="product-overlay">
-                <Button
-                  type="primary"
-                  icon={<PlayCircleOutlined />}
-                  className="product-action-btn product-launch-btn"
-                  onClick={() => console.log("Lunch clicked")}
-                >
-                  Lunch
-                </Button>
-                <Button
-                  type="primary"
-                  icon={<EditOutlined />}
-                  className="product-action-btn product-edit-btn"
-                  onClick={() => handleEditClick()}
-                >
-                  Edit
-                </Button>
-              </div>
-            </div>
-            <div className="product-label">
-              <p className="cn">CN:糖果大战</p>
-              <p className="en">EN:Candy Wars</p>
-            </div>
-          </div>
-          <div className="product">
-            <div className="product-image-container">
-              <img src="/cat.jpg" alt="" className="product-image" />
-              <div className="product-overlay">
-                <Button
-                  type="primary"
-                  icon={<PlayCircleOutlined />}
-                  className="product-action-btn product-launch-btn"
-                  onClick={() => console.log("Lunch clicked")}
-                >
-                  Lunch
-                </Button>
-                <Button
-                  type="primary"
-                  icon={<EditOutlined />}
-                  className="product-action-btn product-edit-btn"
-                  onClick={() => handleEditClick()}
-                >
-                  Edit
-                </Button>
-              </div>
-            </div>
-            <div className="product-label">
-              <p className="cn">CN:糖果大战</p>
-              <p className="en">EN:Candy Wars</p>
-            </div>
-          </div>
-          <div className="product">
-            <div className="product-image-container">
-              <img src="/cat.jpg" alt="" className="product-image" />
-              <div className="product-overlay">
-                <Button
-                  type="primary"
-                  icon={<PlayCircleOutlined />}
-                  className="product-action-btn product-launch-btn"
-                  onClick={() => console.log("Lunch clicked")}
-                >
-                  Lunch
-                </Button>
-                <Button
-                  type="primary"
-                  icon={<EditOutlined />}
-                  className="product-action-btn product-edit-btn"
-                  onClick={() => handleEditClick()}
-                >
-                  Edit
-                </Button>
-              </div>
-            </div>
-            <div className="product-label">
-              <p className="cn">CN:糖果大战</p>
-              <p className="en">EN:Candy Wars</p>
-            </div>
-          </div>
-          <div className="product">
-            <div className="product-image-container">
-              <img src="/cat.jpg" alt="" className="product-image" />
-              <div className="product-overlay">
-                <Button
-                  type="primary"
-                  icon={<PlayCircleOutlined />}
-                  className="product-action-btn product-launch-btn"
-                  onClick={() => console.log("Lunch clicked")}
-                >
-                  Lunch
-                </Button>
-                <Button
-                  type="primary"
-                  icon={<EditOutlined />}
-                  className="product-action-btn product-edit-btn"
-                  onClick={() => handleEditClick()}
-                >
-                  Edit
-                </Button>
-              </div>
-            </div>
-            <div className="product-label">
-              <p className="cn">CN:糖果大战</p>
-              <p className="en">EN:Candy Wars</p>
-            </div>
-          </div>
-          <div className="product">
-            <div className="product-image-container">
-              <img src="/cat.jpg" alt="" className="product-image" />
-              <div className="product-overlay">
-                <Button
-                  type="primary"
-                  icon={<PlayCircleOutlined />}
-                  className="product-action-btn product-launch-btn"
-                  onClick={() => console.log("Lunch clicked")}
-                >
-                  Lunch
-                </Button>
-                <Button
-                  type="primary"
-                  icon={<EditOutlined />}
-                  className="product-action-btn product-edit-btn"
-                  onClick={() => handleEditClick()}
-                >
-                  Edit
-                </Button>
-              </div>
-            </div>
-            <div className="product-label">
-              <p className="cn">CN:糖果大战</p>
-              <p className="en">EN:Candy Wars</p>
-            </div>
-          </div>
-          <div className="product">
-            <div className="product-image-container">
-              <img src="/cat.jpg" alt="" className="product-image" />
-              <div className="product-overlay">
-                <Button
-                  type="primary"
-                  icon={<PlayCircleOutlined />}
-                  className="product-action-btn product-launch-btn"
-                  onClick={() => console.log("Lunch clicked")}
-                >
-                  Lunch
-                </Button>
-                <Button
-                  type="primary"
-                  icon={<EditOutlined />}
-                  className="product-action-btn product-edit-btn"
-                  onClick={() => handleEditClick()}
-                >
-                  Edit
-                </Button>
-              </div>
-            </div>
-            <div className="product-label">
-              <p className="cn">CN:糖果大战</p>
-              <p className="en">EN:Candy Wars</p>
-            </div>
-          </div>
-        </div>
+        )}
         <div className="game-model">
           <img
             src="/model.png"
@@ -776,7 +325,7 @@ const GameProducts = () => {
       </div>
       <div className="table-pagination1">
         <div className="main-pagination">
-          <div>Total 658</div>
+          <div>Total {totalItems}</div>
           <Pagination
             current={currentPage}
             total={totalItems}

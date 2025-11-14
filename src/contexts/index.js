@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
+import apiService from "../services/api";
 
 // Create the App Context
 const AppContext = createContext(null);
@@ -133,10 +134,12 @@ const initialState = {
   // Game Manager
   gameManager: {
     dataSource: [],
+    loading: false,
+    error: null,
     pagination: {
-      currentPage: 51,
+      currentPage: 1,
       pageSize: 10,
-      totalItems: 658,
+      totalItems: 0,
     },
     modals: {
       isAddEditModalOpen: false,
@@ -868,6 +871,188 @@ export const AppProvider = ({ children }) => {
     }));
   }, []);
 
+  /**
+   * Map backend game data to frontend format
+   * This function processes raw backend data and converts it to the format expected by components
+   */
+  const mapGameData = useCallback((game) => {
+    // Extract language names from lang_name (could be object or string)
+    let cnName = game.game_name;
+    let enName = game.game_name;
+    
+    if (game.lang_name) {
+      if (typeof game.lang_name === 'object') {
+        cnName = game.lang_name.zh || game.lang_name.ZH || game.lang_name['zh-CN'] || game.game_name;
+        enName = game.lang_name.en || game.lang_name.EN || game.lang_name['en-US'] || game.game_name;
+      } else if (typeof game.lang_name === 'string') {
+        // If it's a string, try to parse it
+        try {
+          const langObj = JSON.parse(game.lang_name);
+          cnName = langObj.zh || langObj.ZH || langObj['zh-CN'] || game.game_name;
+          enName = langObj.en || langObj.EN || langObj['en-US'] || game.game_name;
+        } catch (e) {
+          // If parsing fails, use game_name for both
+          cnName = game.game_name;
+          enName = game.game_name;
+        }
+      }
+    }
+    
+    return {
+      key: game.game_code || `game-${game.product_id}-${game.game_code}`,
+      id: game.product_id,
+      gameCode: game.game_code,
+      gameName: game.game_name,
+      image: game.image_url || "/cat.jpg",
+      cnName: cnName,
+      enName: enName,
+      gameType: game.game_type,
+      productCode: game.product_code,
+      status: game.status,
+      // Store full game data for edit modal
+      fullData: game,
+    };
+  }, []);
+
+  /**
+   * Fetch games from backend API
+   * This function handles all backend communication and data processing
+   */
+  const fetchGames = useCallback(async (productCode = 1020) => {
+    setState((prev) => ({
+      ...prev,
+      gameManager: {
+        ...prev.gameManager,
+        loading: true,
+        error: null,
+      },
+    }));
+
+    try {
+      const response = await apiService.getProviderGames(productCode);
+      
+      // Process backend data
+      if (response.data && response.data.provider_games) {
+        const mappedGames = response.data.provider_games.map(mapGameData);
+        
+        setState((prev) => ({
+          ...prev,
+          gameManager: {
+            ...prev.gameManager,
+            dataSource: mappedGames,
+            loading: false,
+            error: null,
+            pagination: {
+              ...prev.gameManager.pagination,
+              totalItems: mappedGames.length,
+              currentPage: 1,
+            },
+          },
+        }));
+
+        return { success: true, data: mappedGames };
+      } else {
+        setState((prev) => ({
+          ...prev,
+          gameManager: {
+            ...prev.gameManager,
+            dataSource: [],
+            loading: false,
+            error: null,
+            pagination: {
+              ...prev.gameManager.pagination,
+              totalItems: 0,
+            },
+          },
+        }));
+
+        return { success: true, data: [] };
+      }
+    } catch (err) {
+      const errorMessage = err.message || 'Failed to load games';
+      
+      setState((prev) => ({
+        ...prev,
+        gameManager: {
+          ...prev.gameManager,
+          loading: false,
+          error: errorMessage,
+          dataSource: [],
+        },
+      }));
+
+      return { success: false, error: errorMessage };
+    }
+  }, [mapGameData]);
+
+  /**
+   * Update game manager data source
+   */
+  const updateGameManagerDataSource = useCallback((dataSource) => {
+    setState((prev) => ({
+      ...prev,
+      gameManager: {
+        ...prev.gameManager,
+        dataSource,
+        pagination: {
+          ...prev.gameManager.pagination,
+          totalItems: dataSource.length,
+        },
+      },
+    }));
+  }, []);
+
+  /**
+   * Update a single game item
+   */
+  const updateGameManagerItem = useCallback((key, updates) => {
+    setState((prev) => ({
+      ...prev,
+      gameManager: {
+        ...prev.gameManager,
+        dataSource: prev.gameManager.dataSource.map((item) =>
+          item.key === key ? { ...item, ...updates } : item
+        ),
+      },
+    }));
+  }, []);
+
+  /**
+   * Add a new game item
+   */
+  const addGameManagerItem = useCallback((newItem) => {
+    setState((prev) => ({
+      ...prev,
+      gameManager: {
+        ...prev.gameManager,
+        dataSource: [...prev.gameManager.dataSource, newItem],
+        pagination: {
+          ...prev.gameManager.pagination,
+          totalItems: prev.gameManager.dataSource.length + 1,
+        },
+      },
+    }));
+  }, []);
+
+  /**
+   * Delete a game item
+   */
+  const deleteGameManagerItem = useCallback((key) => {
+    setState((prev) => ({
+      ...prev,
+      gameManager: {
+        ...prev.gameManager,
+        dataSource: prev.gameManager.dataSource.filter(
+          (item) => item.key !== key
+        ),
+        pagination: {
+          ...prev.gameManager.pagination,
+          totalItems: prev.gameManager.dataSource.length - 1,
+        },
+      },
+    }));
+  }, []);
+
   // Generic actions for other game modules (can be extended)
   const updateModuleDataSource = useCallback((moduleName, dataSource) => {
     setState((prev) => ({
@@ -980,6 +1165,11 @@ export const AppProvider = ({ children }) => {
     // Game Manager actions
     setGameManagerPagination,
     setGameManagerCurrentPage,
+    fetchGames,
+    updateGameManagerDataSource,
+    updateGameManagerItem,
+    addGameManagerItem,
+    deleteGameManagerItem,
 
     // Generic module actions
     updateModuleDataSource,

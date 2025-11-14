@@ -7,7 +7,7 @@ import "./style.css";
 
 // Map menu keys to routes
 const keyToRouteMap = {
-  "game-category": "/",
+  "game-category": "/game-category",
   "game-provider": "/game-provider",
   "game-manager": "/game-manager",
   "game-store": "/game-store",
@@ -16,11 +16,12 @@ const keyToRouteMap = {
 
 // Map routes to menu keys
 const routeToKeyMap = {
-  "/": "game-category",
+  "/game-category": "game-category",
   "/game-provider": "game-provider",
   "/game-manager": "game-manager",
   "/game-store": "game-store",
   "/game-tags": "game-tags",
+  "/": "game-category", // Fallback for root path
 };
 
 const SideBar = () => {
