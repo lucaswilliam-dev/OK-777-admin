@@ -1,4 +1,5 @@
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://156.238.242.137:8443/api/v1';
+// const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://ok777-render.onrender.com/api/v1';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:4000/api/v1';
 /**
  * API service for communicating with the backend
  */
@@ -8,7 +9,7 @@ class ApiService {
    */
   async request(endpoint, options = {}) {
     try {
-      const url = `${API_BASE_URL}${endpoint}`;
+      const url = `${API_BASE_URL}${endpoint}`; 
       
       // Get token from localStorage for authenticated requests
       const token = localStorage.getItem('token') || sessionStorage.getItem('token');
