@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Button,
   Pagination,
@@ -29,28 +29,30 @@ const GameProducts = () => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [launchingGame, setLaunchingGame] = useState(false);
+  
+  // Use ref to track if initial fetch has been done to prevent unnecessary re-renders
+  const hasFetchedRef = useRef(false);
 
-  // Fetch games from backend when component mounts
-  // All data processing happens in context
+  // Fetch games from backend when component mounts - only once
   useEffect(() => {
-    const loadGames = async () => {
-      const result = await fetchGames(1020);
-      if (!result.success) {
-        message.error(
-          result.error ||
-            "Failed to load games. Please check if the backend is running."
-        );
-      } else if (result.data && result.data.length === 0) {
-        message.warning("No games found");
-      }
-    };
-
-    // Only fetch if dataSource is empty (not already loaded)
-    if (dataSource.length === 0 && !loading) {
+    // Only fetch if we haven't fetched yet and dataSource is empty
+    if (!hasFetchedRef.current && dataSource.length === 0 && !loading) {
+      hasFetchedRef.current = true;
+      const loadGames = async () => {
+        const result = await fetchGames(undefined, currentPage, pageSize);
+        if (!result.success) {
+          message.error(
+            result.error ||
+              "Failed to load games. Please check if the backend is running."
+          );
+        } else if (result.data && result.data.length === 0) {
+          message.warning("No games found");
+        }
+      };
       loadGames();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Fetch once on mount - fetchGames is stable from context
+  }, []); // Empty deps - only run once on mount
 
   // Filter states
   const [gameName, setGameName] = useState("");
@@ -99,8 +101,17 @@ const GameProducts = () => {
     // Add your search logic here
   };
 
-  const handlePageChange = (page) => {
-    setGameManagerCurrentPage(page);
+  const handlePageChange = async (page) => {
+    // Fetch games for the new page - fetchGames will update the pagination state
+    // Use pageSize from current state to ensure we have the latest value
+    const currentPageSize = state.gameManager.pagination.pageSize;
+    const result = await fetchGames(undefined, page, currentPageSize);
+    if (!result.success) {
+      message.error(
+        result.error ||
+          "Failed to load games. Please check if the backend is running."
+      );
+    }
   };
 
   const handleDeleteOk = () => {

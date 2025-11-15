@@ -1,5 +1,5 @@
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://ok777-render.onrender.com/api/v1';
-// const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:4000/api/v1';
+// const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://ok777-render.onrender.com/api/v1';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:4000/api/v1';
 /**
  * API service for communicating with the backend
  */
@@ -152,11 +152,17 @@ class ApiService {
 
   /**
    * Get provider games
-   * @param {number} code - Product code (default: 1020)
-   * @returns {Promise} Game list
+   * @param {number} code - Product code (optional, if not provided, fetches all games)
+   * @param {number} page - Page number (default: 1)
+   * @param {number} limit - Number of games per page (default: 21)
+   * @returns {Promise} Game list with pagination
    */
-  async getProviderGames(code = 1020) {
-    return this.request(`/operators/provider-games?code=${code}`);
+  async getProviderGames(code, page = 1, limit = 21) {
+    let endpoint = `/operators/provider-games?page=${page}&limit=${limit}`;
+    if (code !== undefined && code !== null) {
+      endpoint += `&code=${code}`;
+    }
+    return this.request(endpoint);
   }
 
   /**

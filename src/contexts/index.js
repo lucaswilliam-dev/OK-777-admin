@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from "react";
+import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from "react";
 import apiService from "../services/api";
 
 // Create the App Context
@@ -138,7 +138,7 @@ const initialState = {
     error: null,
     pagination: {
       currentPage: 1,
-      pageSize: 10,
+      pageSize: 21,
       totalItems: 0,
     },
     modals: {
@@ -267,6 +267,13 @@ const initialState = {
 // Context Provider Component
 export const AppProvider = ({ children }) => {
   const [state, setState] = useState(initialState);
+  // Use ref to track current state for synchronous access in callbacks
+  const stateRef = useRef(state);
+  
+  // Keep ref in sync with state
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
 
   // Sidebar actions
   const setSelectedKey = useCallback((key) => {
@@ -917,8 +924,16 @@ export const AppProvider = ({ children }) => {
   /**
    * Fetch games from backend API
    * This function handles all backend communication and data processing
+   * @param {number} productCode - Optional product code (if not provided, fetches all games)
+   * @param {number} page - Page number (default: uses current page from state)
+   * @param {number} limit - Number of games per page (default: uses pageSize from state)
    */
-  const fetchGames = useCallback(async (productCode = 1020) => {
+  const fetchGames = useCallback(async (productCode, page, limit) => {
+    // Get current pagination values - use provided params or fall back to state
+    const currentPage = page !== undefined && page !== null ? page : stateRef.current.gameManager.pagination.currentPage;
+    const pageSize = limit !== undefined && limit !== null ? limit : stateRef.current.gameManager.pagination.pageSize;
+
+    // Set loading state
     setState((prev) => ({
       ...prev,
       gameManager: {
@@ -929,28 +944,45 @@ export const AppProvider = ({ children }) => {
     }));
 
     try {
-      const response = await apiService.getProviderGames(productCode);
+      const response = await apiService.getProviderGames(productCode, currentPage, pageSize);
       
       // Process backend data
       if (response.data && response.data.provider_games) {
         const mappedGames = response.data.provider_games.map(mapGameData);
         
+        // Frontend deduplication safety layer - remove duplicates by gameCode
+        const uniqueGamesMap = new Map();
+        for (const game of mappedGames) {
+          // Use gameCode as the unique identifier (it's set in mapGameData from game.game_code)
+          const gameCode = game.gameCode;
+          if (gameCode && !uniqueGamesMap.has(gameCode)) {
+            uniqueGamesMap.set(gameCode, game);
+          }
+        }
+        const uniqueGames = Array.from(uniqueGamesMap.values());
+        
+        // Extract pagination info from response if available
+        const paginationInfo = response.pagination || {};
+        const totalItems = paginationInfo.total !== undefined ? paginationInfo.total : uniqueGames.length;
+        
+        // Always use the currentPage we requested, not the one from response
         setState((prev) => ({
           ...prev,
           gameManager: {
             ...prev.gameManager,
-            dataSource: mappedGames,
+            dataSource: uniqueGames,
             loading: false,
             error: null,
             pagination: {
               ...prev.gameManager.pagination,
-              totalItems: mappedGames.length,
-              currentPage: 1,
+              totalItems: totalItems,
+              currentPage: currentPage, // Use the page we requested
+              pageSize: pageSize,
             },
           },
         }));
 
-        return { success: true, data: mappedGames };
+        return { success: true, data: uniqueGames };
       } else {
         setState((prev) => ({
           ...prev,
