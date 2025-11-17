@@ -4,6 +4,39 @@ import apiService from "../services/api";
 // Create the App Context
 const AppContext = createContext(null);
 
+// Helper functions for localStorage
+const STORAGE_KEY_SELECTED_GAMES = 'gameManager_selectedGames';
+const STORAGE_KEY_SELECTED_KEYS = 'gameManager_selectedKeys';
+
+const loadSelectedGamesFromStorage = () => {
+  try {
+    const storedGames = localStorage.getItem(STORAGE_KEY_SELECTED_GAMES);
+    const storedKeys = localStorage.getItem(STORAGE_KEY_SELECTED_KEYS);
+    
+    if (storedGames && storedKeys) {
+      return {
+        games: JSON.parse(storedGames),
+        keys: JSON.parse(storedKeys),
+      };
+    }
+  } catch (error) {
+    console.error('Error loading selected games from localStorage:', error);
+  }
+  return { games: [], keys: [] };
+};
+
+const saveSelectedGamesToStorage = (games, keys) => {
+  try {
+    localStorage.setItem(STORAGE_KEY_SELECTED_GAMES, JSON.stringify(games));
+    localStorage.setItem(STORAGE_KEY_SELECTED_KEYS, JSON.stringify(keys));
+  } catch (error) {
+    console.error('Error saving selected games to localStorage:', error);
+  }
+};
+
+// Load initial selected games from localStorage
+const initialSelectedGames = loadSelectedGamesFromStorage();
+
 // Initial state
 const initialState = {
   // Navigation/Sidebar
@@ -14,52 +47,13 @@ const initialState = {
 
   // Game Category
   gameCategory: {
-    dataSource: [
-      {
-        key: "1",
-        id: 23,
-        name: "Slot",
-        icon: "/logo512.png",
-        state: true,
-        createTime: "2021-02-28 10:30",
-      },
-      {
-        key: "2",
-        id: 25,
-        name: "LiveCasino",
-        icon: "/logo512.png",
-        state: true,
-        createTime: "2021-02-28 10:30",
-      },
-      {
-        key: "3",
-        id: 46,
-        name: "CryptoGames",
-        icon: "/logo512.png",
-        state: true,
-        createTime: "2021-02-28 10:30",
-      },
-      {
-        key: "4",
-        id: 577,
-        name: "TableGames",
-        icon: "/logo512.png",
-        state: true,
-        createTime: "2021-02-28 10:30",
-      },
-      {
-        key: "5",
-        id: 578,
-        name: "Sport",
-        icon: "/logo512.png",
-        state: true,
-        createTime: "2021-02-28 10:30",
-      },
-    ],
+    dataSource: [],
+    loading: false,
+    error: null,
     pagination: {
-      currentPage: 51,
+      currentPage: 1,
       pageSize: 10,
-      totalItems: 658,
+      totalItems: 0,
     },
     modals: {
       isAddEditModalOpen: false,
@@ -71,57 +65,13 @@ const initialState = {
 
   // Game Provider
   gameProvider: {
-    dataSource: [
-      {
-        key: "1",
-        id: 23,
-        name: "ag",
-        cover: "/cat.jpg",
-        sort: 1,
-        state: true,
-        createTime: "2021-02-28 10:30",
-      },
-      {
-        key: "2",
-        id: 25,
-        name: "allbet",
-        cover: "/cat.jpg",
-        sort: 2,
-        state: true,
-        createTime: "2021-02-28 10:30",
-      },
-      {
-        key: "3",
-        id: 46,
-        name: "ap",
-        cover: "/cat.jpg",
-        sort: 3,
-        state: true,
-        createTime: "2021-02-28 10:30",
-      },
-      {
-        key: "4",
-        id: 577,
-        name: "bbin",
-        cover: "/cat.jpg",
-        sort: 4,
-        state: true,
-        createTime: "2021-02-28 10:30",
-      },
-      {
-        key: "5",
-        id: 23,
-        name: "bg",
-        cover: "/cat.jpg",
-        sort: 5,
-        state: true,
-        createTime: "2021-02-28 10:30",
-      },
-    ],
+    dataSource: [],
+    loading: false,
+    error: null,
     pagination: {
       currentPage: 1,
       pageSize: 10,
-      totalItems: 5,
+      totalItems: 0,
     },
     modals: {
       isAddEditModalOpen: false,
@@ -133,13 +83,13 @@ const initialState = {
 
   // Game Manager
   gameManager: {
-    dataSource: [],
+    dataSource: initialSelectedGames.games, // Initialize with persisted games
     loading: false,
     error: null,
     pagination: {
       currentPage: 1,
       pageSize: 21,
-      totalItems: 0,
+      totalItems: initialSelectedGames.games.length, // Set total items from persisted games
     },
     modals: {
       isAddEditModalOpen: false,
@@ -147,76 +97,22 @@ const initialState = {
       editingItem: null,
       itemToDelete: null,
     },
+    // Track which games are added to gameManager (using game keys as array)
+    selectedGameKeys: initialSelectedGames.keys,
+    // Store the actual game data for persistence
+    _persistedGames: initialSelectedGames.games,
   },
 
   // Game Store
   gameStore: {
-    dataSource: [
-      {
-        key: "1",
-        id: 23,
-        name: "Slot Game 1",
-        provider: "ag",
-        category: "Live",
-        pingMs: 60,
-        pingStatus: "online",
-        inStore: false,
-        state: true,
-        createTime: "2021-02-28 10:30",
-      },
-      {
-        key: "2",
-        id: 25,
-        name: "Slot Game 2",
-        provider: "allbet",
-        category: "Slot",
-        pingMs: 110,
-        pingStatus: "online",
-        inStore: true,
-        state: true,
-        createTime: "2021-02-28 10:30",
-      },
-      {
-        key: "3",
-        id: 46,
-        name: "Slot Game 3",
-        provider: "ap",
-        category: "Lottery",
-        pingMs: 300,
-        pingStatus: "online",
-        inStore: true,
-        state: true,
-        createTime: "2021-02-28 10:30",
-      },
-      {
-        key: "4",
-        id: 577,
-        name: "Slot Game 4",
-        provider: "bbin",
-        category: "Sports",
-        pingMs: undefined,
-        pingStatus: "offline",
-        inStore: false,
-        state: true,
-        createTime: "2021-02-28 10:30",
-      },
-      {
-        key: "5",
-        id: 578,
-        name: "Slot Game 5",
-        provider: "bg",
-        category: "Fishing",
-        pingMs: undefined,
-        pingStatus: "offline",
-        inStore: true,
-        state: true,
-        createTime: "2021-02-28 10:30",
-      },
-    ],
+    dataSource: [],
+    loading: false,
+    error: null,
+    lastUpdated: null,
     pagination: {
-      currentPage: 51,
+      currentPage: 1,
       pageSize: 10,
-      totalItems: 658,
+      totalItems: 0,
     },
     modals: {
       isAddEditModalOpen: false,
@@ -457,6 +353,69 @@ export const AppProvider = ({ children }) => {
     });
   }, []);
 
+  // Fetch game categories from database
+  const fetchGameCategories = useCallback(async () => {
+    setState((prev) => ({
+      ...prev,
+      gameCategory: {
+        ...prev.gameCategory,
+        loading: true,
+        error: null,
+      },
+    }));
+
+    try {
+      const response = await apiService.getGameCategories();
+      
+      if (response.success && response.data) {
+        // Transform database response to match table format
+        const transformedCategories = response.data.map((category) => ({
+          key: category.id.toString(),
+          id: category.id,
+          name: category.name,
+          icon: "",
+          state: true, // Default state, can be updated if needed
+          createTime: category.createdAt 
+            ? new Date(category.createdAt).toLocaleString('en-US', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false,
+              }).replace(',', '')
+            : new Date().toLocaleString(),
+        }));
+
+        setState((prev) => ({
+          ...prev,
+          gameCategory: {
+            ...prev.gameCategory,
+            dataSource: transformedCategories,
+            loading: false,
+            error: null,
+            pagination: {
+              ...prev.gameCategory.pagination,
+              totalItems: transformedCategories.length,
+            },
+          },
+        }));
+      } else {
+        throw new Error(response.error || 'Failed to fetch categories');
+      }
+    } catch (error) {
+      console.error('Error fetching game categories:', error);
+      setState((prev) => ({
+        ...prev,
+        gameCategory: {
+          ...prev.gameCategory,
+          loading: false,
+          error: error.message || 'Failed to fetch game categories',
+        },
+      }));
+    }
+  }, []);
+
   // Game Provider actions
   const updateGameProviderItem = useCallback((key, updates) => {
     setState((prev) => ({
@@ -580,7 +539,214 @@ export const AppProvider = ({ children }) => {
     });
   }, []);
 
+  // Fetch game providers (products) from database
+  const fetchGameProviders = useCallback(async (page, limit) => {
+    // Get current pagination values - use provided params or fall back to state
+    const currentPage = page !== undefined && page !== null ? page : stateRef.current.gameProvider.pagination.currentPage;
+    const pageSize = limit !== undefined && limit !== null ? limit : stateRef.current.gameProvider.pagination.pageSize;
+
+    setState((prev) => ({
+      ...prev,
+      gameProvider: {
+        ...prev.gameProvider,
+        loading: true,
+        error: null,
+      },
+    }));
+
+    try {
+      const response = await apiService.getProducts(currentPage, pageSize);
+      
+      if (response.code === 200 && response.data) {
+        // Transform database products to match table format
+        const transformedProducts = response.data.map((product, index) => ({
+          key: product.id.toString(),
+          id: product.id,
+          name: product.provider || product.name || `Product ${product.code}`,
+          cover: product.image || "/cat.jpg",
+          sort: (currentPage - 1) * pageSize + index + 1, // Calculate sort based on pagination
+          state: product.enabled !== undefined ? product.enabled : true,
+          createTime: product.createdAt 
+            ? new Date(product.createdAt).toLocaleString('en-US', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false,
+              }).replace(',', '')
+            : new Date().toLocaleString(),
+          // Additional fields from Product table
+          code: product.code,
+          provider: product.provider,
+          currency: product.currency,
+          status: product.status,
+          gameType: product.gameType,
+          title: product.title,
+        }));
+
+        // Extract pagination info from response if available
+        const paginationInfo = response.pagination || {};
+        const totalItems = paginationInfo.total !== undefined ? paginationInfo.total : transformedProducts.length;
+
+        setState((prev) => ({
+          ...prev,
+          gameProvider: {
+            ...prev.gameProvider,
+            dataSource: transformedProducts,
+            loading: false,
+            error: null,
+            pagination: {
+              ...prev.gameProvider.pagination,
+              totalItems: totalItems,
+              currentPage: currentPage,
+              pageSize: pageSize,
+            },
+          },
+        }));
+      } else {
+        throw new Error(response.message || 'Failed to fetch products');
+      }
+    } catch (error) {
+      console.error('Error fetching game providers:', error);
+      setState((prev) => ({
+        ...prev,
+        gameProvider: {
+          ...prev.gameProvider,
+          loading: false,
+          error: error.message || 'Failed to fetch game providers',
+        },
+      }));
+    }
+  }, []);
+
   // Game Store actions
+  /**
+   * Map backend game data to GameStore table format
+   */
+  const mapGameStoreData = useCallback((game) => {
+    // Generate random ping value between 20-350ms
+    const randomPing = Math.floor(Math.random() * 330) + 20;
+    const pingStatus = randomPing < 300 ? "online" : "offline";
+    
+    // Get provider - backend now returns it from Game table
+    const provider = game.provider || "-";
+    
+    // Get category - backend now returns category name from GameCategory table
+    // Falls back to gameType if category name is not available
+    const category = game.category || game.game_type || "-";
+    
+    // Get state - convert status to boolean
+    // Status can be "ACTIVATED", "active", "enabled", etc.
+    const state = game.status === "ACTIVATED" || 
+                  game.status === "active" || 
+                  game.status === "enabled" || 
+                  game.status === "ACTIVE";
+    
+    return {
+      key: game.game_code || `game-${game.product_id}-${game.game_code}`,
+      id: game.product_id,
+      gameCode: game.game_code,
+      name: game.game_name, // GameName
+      provider: provider, // Provider from backend Game table
+      category: category, // Category name from GameCategory table (or gameType as fallback)
+      state: state, // State from status
+      status: game.status, // Keep original status
+      pingMs: randomPing, // Random ping value
+      pingStatus: pingStatus, // Online/offline based on ping
+      inStore: false, // Default to not in store
+      gameType: game.game_type,
+      productCode: game.product_code,
+      fullData: game, // Store full game data
+    };
+  }, []);
+
+  /**
+   * Fetch games for GameStore from backend API
+   * @param {number} productCode - Product code (optional)
+   * @param {number} page - Page number (optional)
+   * @param {number} limit - Page size (optional)
+   * @param {string} search - Search term for game name (optional)
+   * @param {string} category - Category name filter (optional)
+   * @param {string} provider - Provider name filter (optional)
+   */
+  const fetchGamesForStore = useCallback(async (productCode, page, limit, search, category, provider) => {
+    const currentPage = page !== undefined && page !== null ? page : stateRef.current.gameStore.pagination.currentPage;
+    const pageSize = limit !== undefined && limit !== null ? limit : stateRef.current.gameStore.pagination.pageSize;
+
+    // Set loading state
+    setState((prev) => ({
+      ...prev,
+      gameStore: {
+        ...prev.gameStore,
+        loading: true,
+        error: null,
+      },
+    }));
+
+    try {
+      const response = await apiService.getProvidedGames(productCode, currentPage, pageSize, search, category, provider);
+      
+      if (response.data && response.data.provider_games) {
+        // Map games to GameStore format with random ping values
+        const mappedGames = response.data.provider_games.map(mapGameStoreData);
+        
+        // Extract pagination info
+        const paginationInfo = response.pagination || {};
+        const totalItems = paginationInfo.total !== undefined ? paginationInfo.total : mappedGames.length;
+        
+        setState((prev) => ({
+          ...prev,
+          gameStore: {
+            ...prev.gameStore,
+            dataSource: mappedGames,
+            loading: false,
+            error: null,
+            lastUpdated: response.lastUpdated || null,
+            pagination: {
+              ...prev.gameStore.pagination,
+              totalItems: totalItems,
+              currentPage: currentPage,
+              pageSize: pageSize,
+            },
+          },
+        }));
+
+        return { success: true, data: mappedGames };
+      } else {
+        setState((prev) => ({
+          ...prev,
+          gameStore: {
+            ...prev.gameStore,
+            dataSource: [],
+            loading: false,
+            error: null,
+            pagination: {
+              ...prev.gameStore.pagination,
+              totalItems: 0,
+            },
+          },
+        }));
+
+        return { success: true, data: [] };
+      }
+    } catch (err) {
+      const errorMessage = err.message || 'Failed to load games';
+      
+      setState((prev) => ({
+        ...prev,
+        gameStore: {
+          ...prev.gameStore,
+          loading: false,
+          error: errorMessage,
+          dataSource: [],
+        },
+      }));
+
+      return { success: false, error: errorMessage };
+    }
+  }, [mapGameStoreData]);
+
   const updateGameStoreDataSource = useCallback((dataSource) => {
     setState((prev) => ({
       ...prev,
@@ -916,6 +1082,8 @@ export const AppProvider = ({ children }) => {
       gameType: game.game_type,
       productCode: game.product_code,
       status: game.status,
+      provider: game.provider || null, // Include provider from backend
+      category: game.category || game.game_type || null, // Include category name from backend
       // Store full game data for edit modal
       fullData: game,
     };
@@ -1070,20 +1238,130 @@ export const AppProvider = ({ children }) => {
    * Delete a game item
    */
   const deleteGameManagerItem = useCallback((key) => {
-    setState((prev) => ({
-      ...prev,
-      gameManager: {
-        ...prev.gameManager,
-        dataSource: prev.gameManager.dataSource.filter(
-          (item) => item.key !== key
-        ),
-        pagination: {
-          ...prev.gameManager.pagination,
-          totalItems: prev.gameManager.dataSource.length - 1,
+    setState((prev) => {
+      const newDataSource = prev.gameManager.dataSource.filter(
+        (item) => item.key !== key
+      );
+      const newSelectedKeys = prev.gameManager.selectedGameKeys.filter(
+        (gameKey) => gameKey !== key
+      );
+
+      // Save to localStorage
+      saveSelectedGamesToStorage(newDataSource, newSelectedKeys);
+
+      return {
+        ...prev,
+        gameManager: {
+          ...prev.gameManager,
+          dataSource: newDataSource,
+          selectedGameKeys: newSelectedKeys,
+          _persistedGames: newDataSource,
+          pagination: {
+            ...prev.gameManager.pagination,
+            totalItems: newDataSource.length,
+          },
         },
-      },
-    }));
+      };
+    });
   }, []);
+
+  /**
+   * Add a game to gameManager from gameStore
+   */
+  const addGameToManager = useCallback((gameItem) => {
+    setState((prev) => {
+      // Check if game is already in manager
+      if (prev.gameManager.selectedGameKeys.includes(gameItem.key)) {
+        return prev; // Already added, do nothing
+      }
+
+      // Map gameStore item to gameManager format
+      // Get image URL from fullData or directly from gameItem
+      let imageUrl = "/cat.jpg";
+      if (gameItem.fullData?.image_url) {
+        imageUrl = gameItem.fullData.image_url;
+      } else if (gameItem.fullData?.imageUrl) {
+        imageUrl = gameItem.fullData.imageUrl;
+      } else if (gameItem.imageUrl) {
+        imageUrl = gameItem.imageUrl;
+      }
+
+      const managerGame = {
+        key: gameItem.key,
+        id: gameItem.id,
+        gameCode: gameItem.gameCode,
+        gameName: gameItem.name,
+        image: imageUrl,
+        cnName: gameItem.name,
+        enName: gameItem.name,
+        gameType: gameItem.gameType,
+        productCode: gameItem.productCode,
+        status: gameItem.status,
+        provider: gameItem.provider,
+        category: gameItem.category,
+        fullData: gameItem.fullData || gameItem,
+      };
+
+      const newDataSource = [...prev.gameManager.dataSource, managerGame];
+      const newSelectedKeys = [...prev.gameManager.selectedGameKeys, gameItem.key];
+
+      // Save to localStorage
+      saveSelectedGamesToStorage(newDataSource, newSelectedKeys);
+
+      return {
+        ...prev,
+        gameManager: {
+          ...prev.gameManager,
+          dataSource: newDataSource,
+          selectedGameKeys: newSelectedKeys,
+          _persistedGames: newDataSource,
+          pagination: {
+            ...prev.gameManager.pagination,
+            totalItems: newDataSource.length,
+          },
+        },
+      };
+    });
+  }, []);
+
+  /**
+   * Remove a game from gameManager
+   */
+  const removeGameFromManager = useCallback((gameKey) => {
+    setState((prev) => {
+      const newDataSource = prev.gameManager.dataSource.filter(
+        (item) => item.key !== gameKey
+      );
+      const newSelectedKeys = prev.gameManager.selectedGameKeys.filter(
+        (key) => key !== gameKey
+      );
+
+      // Save to localStorage
+      saveSelectedGamesToStorage(newDataSource, newSelectedKeys);
+
+      return {
+        ...prev,
+        gameManager: {
+          ...prev.gameManager,
+          dataSource: newDataSource,
+          selectedGameKeys: newSelectedKeys,
+          _persistedGames: newDataSource,
+          pagination: {
+            ...prev.gameManager.pagination,
+            totalItems: newDataSource.length,
+          },
+        },
+      };
+    });
+  }, []);
+
+  /**
+   * Check if a game is in gameManager
+   * Uses state directly for better reactivity
+   */
+  const isGameInManager = useCallback((gameKey) => {
+    return state.gameManager.selectedGameKeys.includes(gameKey);
+  }, [state.gameManager.selectedGameKeys]);
 
   // Generic actions for other game modules (can be extended)
   const updateModuleDataSource = useCallback((moduleName, dataSource) => {
@@ -1160,6 +1438,7 @@ export const AppProvider = ({ children }) => {
     openGameCategoryDeleteModal,
     closeGameCategoryDeleteModal,
     confirmDeleteGameCategoryItem,
+    fetchGameCategories,
 
     // Game Provider actions
     updateGameProviderItem,
@@ -1170,8 +1449,10 @@ export const AppProvider = ({ children }) => {
     openGameProviderDeleteModal,
     closeGameProviderDeleteModal,
     confirmDeleteGameProviderItem,
+    fetchGameProviders,
 
     // Game Store actions
+    fetchGamesForStore,
     updateGameStoreDataSource,
     updateGameStoreItem,
     addGameStoreItem,
@@ -1202,6 +1483,9 @@ export const AppProvider = ({ children }) => {
     updateGameManagerItem,
     addGameManagerItem,
     deleteGameManagerItem,
+    addGameToManager,
+    removeGameFromManager,
+    isGameInManager,
 
     // Generic module actions
     updateModuleDataSource,

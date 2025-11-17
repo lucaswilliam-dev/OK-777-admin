@@ -1,5 +1,5 @@
-import React from "react";
-import { Table as AntTable, Switch, Space, Button, Pagination } from "antd";
+import React, { useEffect } from "react";
+import { Table as AntTable, Switch, Space, Button, Pagination, Spin } from "antd";
 import AddOrEditModal from "../../../Modal/AddOrEditModal";
 import DeleteModal from "../../../Modal/DeleteModal";
 import { useAppContext } from "../../../../contexts";
@@ -16,14 +16,20 @@ const Table = () => {
     openGameProviderDeleteModal,
     closeGameProviderDeleteModal,
     confirmDeleteGameProviderItem,
+    fetchGameProviders,
   } = useAppContext();
 
-  const { dataSource, pagination, modals } = state.gameProvider;
+  const { dataSource, pagination, modals, loading, error } = state.gameProvider;
   const { currentPage, pageSize, totalItems } = pagination;
   const { isAddEditModalOpen, isDeleteModalOpen, editingItem } = modals;
 
+  // Fetch providers on component mount
+  useEffect(() => {
+    fetchGameProviders();
+  }, [fetchGameProviders]);
+
   // Use totalItems for pagination
-  const totalCount = totalItems || 658;
+  const totalCount = totalItems || 0;
 
   const handleStateChange = (record, checked) => {
     updateGameProviderItem(record.key, { state: checked });
@@ -115,6 +121,8 @@ const Table = () => {
 
   const handlePageChange = (page) => {
     setGameProviderCurrentPage(page);
+    // Fetch data for the new page
+    fetchGameProviders(page, pageSize);
   };
 
   const createModalShow = () => {
@@ -183,16 +191,44 @@ const Table = () => {
 
       <div className="line"></div>
       <div className="table-wrapper">
-        <AntTable
-          columns={columns}
-          dataSource={dataSource}
-          pagination={false}
-          className="game-category-table"
-          rowClassName="table-row"
-          bordered={false}
-          size="small"
-          scroll={{ x: "max-content", y: 106 * 5 }}
-        />
+        {loading ? (
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              minHeight: "400px",
+            }}
+          >
+            <Spin size="large" tip="Loading providers..." />
+          </div>
+        ) : error ? (
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              minHeight: "400px",
+              flexDirection: "column",
+            }}
+          >
+            <p style={{ color: "red", marginBottom: "16px" }}>Error: {error}</p>
+            <Button type="primary" onClick={fetchGameProviders}>
+              Retry
+            </Button>
+          </div>
+        ) : (
+          <AntTable
+            columns={columns}
+            dataSource={dataSource}
+            pagination={false}
+            className="game-category-table"
+            rowClassName="table-row"
+            bordered={false}
+            size="small"
+            scroll={{ x: "max-content", y: 106 * 5 }}
+          />
+        )}
       </div>
       <div className="table-pagination">
         <div></div>

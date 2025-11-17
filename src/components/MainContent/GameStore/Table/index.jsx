@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from "react";
-import { Table as AntTable, Button, Pagination, Input, Select } from "antd";
+import React, { useMemo, useState, useEffect, useRef } from "react";
+import { Table as AntTable, Button, Pagination, Input, Select, Spin, message } from "antd";
 import { SearchOutlined, UploadOutlined } from "@ant-design/icons";
 import AddOrEditModal from "../../../Modal/AddOrEditModal";
 import DeleteModal from "../../../Modal/DeleteModal";
@@ -8,6 +8,7 @@ import StorePing from "../../../Modal/StorePing";
 import StoreAdd from "../../../Modal/StoreAdd";
 import StoreMove from "../../../Modal/StoreMove";
 import { useAppContext } from "../../../../contexts";
+import api from "../../../../services/api";
 import "./style.css";
 
 const Table = () => {
@@ -16,12 +17,15 @@ const Table = () => {
     updateGameStoreItem,
     addGameStoreItem,
     deleteGameStoreItem,
-    setGameStoreCurrentPage,
     openGameStoreModal,
     closeGameStoreModal,
+    fetchGamesForStore,
+    addGameToManager,
+    removeGameFromManager,
+    isGameInManager,
   } = useAppContext();
 
-  const { dataSource, pagination, modals } = state.gameStore;
+  const { dataSource, pagination, modals, loading, error, lastUpdated } = state.gameStore;
   const { currentPage, pageSize, totalItems } = pagination;
   const {
     isAddEditModalOpen,
@@ -40,30 +44,69 @@ const Table = () => {
   const [tags] = useState(["Hot", "New"]);
   const [dateRange] = useState(null);
   const [visibility] = useState(["EN", "ZH"]);
+  
+  // Store current search filters to preserve them during pagination
+  const [currentSearchFilters, setCurrentSearchFilters] = useState({
+    search: undefined,
+    category: undefined,
+    provider: undefined,
+  });
 
-  // const [tags, setTags] = useState(["Hot", "New"]);
-  // const [dateRange, setDateRange] = useState(null);
-  // const [visibility, setVisibility] = useState(["EN", "ZH"]);
+  // Use ref to track if initial fetch has been done
+  const hasFetchedRef = useRef(false);
 
-  const handleSearch = () => {
-    console.log("Search with filters:", {
-      gameName,
-      category,
-      provider,
-      tags,
-      dateRange,
-      visibility,
-    });
-    // Add your search logic here
+  // Fetch games from backend when component mounts
+  useEffect(() => {
+    if (!hasFetchedRef.current && dataSource.length === 0 && !loading) {
+      hasFetchedRef.current = true;
+      const loadGames = async () => {
+        const result = await fetchGamesForStore(undefined, currentPage, pageSize);
+        if (!result.success) {
+          message.error(
+            result.error ||
+              "Failed to load games. Please check if the backend is running."
+          );
+        }
+      };
+      loadGames();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleSearch = async () => {
+    // Store current search filters
+    const searchFilters = {
+      search: gameName.trim() || undefined,
+      category: category !== "All" ? category : undefined,
+      provider: provider !== "All" ? provider : undefined,
+    };
+    setCurrentSearchFilters(searchFilters);
+    
+    // Reset to page 1 when searching
+    const result = await fetchGamesForStore(
+      undefined, // productCode
+      1, // page - reset to first page
+      pageSize, // limit
+      searchFilters.search, // search - game name
+      searchFilters.category, // category
+      searchFilters.provider // provider
+    );
+    
+    if (!result.success) {
+      message.error(
+        result.error ||
+          "Failed to search games. Please check if the backend is running."
+      );
+    }
   };
 
-  // Build table data with provider/category/ping/status fallbacks to ensure cells have values
+  // Build table data - dataSource already has all needed fields from backend
   const tableData = useMemo(() => {
     return (dataSource || []).map((item) => ({
       ...item,
       provider: item.provider || "-",
       category: item.category || "-",
-      pingMs: item.pingMs,
+      pingMs: item.pingMs, // Random ping value generated in mapGameStoreData
       pingStatus: item.pingStatus || "offline",
       inStore: typeof item.inStore === "boolean" ? item.inStore : false,
     }));
@@ -141,42 +184,68 @@ const Table = () => {
       width: 160,
       align: "center",
       render: (_, record) => {
-        // Prefer explicit inStore flag if provided; otherwise fall back to availability
-        const isInStore =
-          typeof record.inStore === "boolean" ? record.inStore : !!record.state;
         const isOffline = record.pingStatus === "offline";
-        if (isInStore) {
+        const isInManager = isGameInManager(record.key);
+        
+        if (isInManager) {
+          // Show Remove button if game is in manager
           return (
             <Button
+              type="default"
+              danger
               size="small"
-              className={`action-btn remove-btn${
-                isOffline ? " remove-offline" : ""
-              }`}
+              className={`action-btn remove-btn${isOffline ? " disabled" : ""}`}
+              disabled={isOffline}
               onClick={() => {
-                openGameStoreModal("isDeleteModalOpen", null, record);
+                if (!isOffline) {
+                  // Remove game from manager
+                  removeGameFromManager(record.key);
+                }
               }}
             >
               Remove
             </Button>
           );
+        } else {
+          // Show Add button if game is not in manager
+          return (
+            <Button
+              type="primary"
+              size="small"
+              className={`action-btn add-btn${isOffline ? " disabled" : ""}`}
+              disabled={isOffline}
+              onClick={() => {
+                if (!isOffline) {
+                  // Add game to manager
+                  addGameToManager(record);
+                }
+              }}
+            >
+              Add
+            </Button>
+          );
         }
-        return (
-          <Button
-            type="primary"
-            size="small"
-            className={`action-btn add-btn${isOffline ? " disabled" : ""}`}
-            disabled={isOffline}
-            onClick={() => !isOffline && openGameStoreModal("isAddModalOpen")}
-          >
-            Add
-          </Button>
-        );
       },
     },
   ];
 
-  const handlePageChange = (page) => {
-    setGameStoreCurrentPage(page);
+  const handlePageChange = async (page) => {
+    // Fetch games for the new page, preserving current search filters
+    const currentPageSize = state.gameStore.pagination.pageSize;
+    const result = await fetchGamesForStore(
+      undefined, // productCode
+      page, // page
+      currentPageSize, // limit
+      currentSearchFilters.search, // search - preserve search filters
+      currentSearchFilters.category, // category
+      currentSearchFilters.provider // provider
+    );
+    if (!result.success) {
+      message.error(
+        result.error ||
+          "Failed to load games. Please check if the backend is running."
+      );
+    }
   };
 
   // Delete modal handlers
@@ -194,10 +263,36 @@ const Table = () => {
   };
 
   // Update modal handlers
-  const handleUpdateOk = () => {
+  const handleUpdateOk = async () => {
     console.log("Update confirmed");
     closeGameStoreModal("isUpdateModalOpen");
-    // Add your update logic here
+    
+    // Show loading message
+    const hideLoading = message.loading("Updating game store...", 0);
+    
+    try {
+      // Call the API to update provider games
+      const response = await api.updateProviderGames();
+      
+      hideLoading();
+      
+      if (response.success) {
+        const inserted = response.inserted || 0;
+        message.success(`Successfully updated game store! ${inserted} new games added.`);
+        
+        // Refresh the game list
+        const result = await fetchGamesForStore(undefined, currentPage, pageSize);
+        if (!result.success) {
+          message.warning("Games updated but failed to refresh the list. Please refresh the page.");
+        }
+      } else {
+        message.error(response.error || "Failed to update game store");
+      }
+    } catch (error) {
+      hideLoading();
+      console.error("Update error:", error);
+      message.error(error.message || "Failed to update game store. Please try again.");
+    }
   };
 
   const handleUpdateCancel = () => {
@@ -304,6 +399,7 @@ const Table = () => {
               placeholder="Please input GameName"
               value={gameName}
               onChange={(e) => setGameName(e.target.value)}
+              onPressEnter={handleSearch}
               className="filter-input filter-input-game-store"
             />
           </div>
@@ -367,7 +463,21 @@ const Table = () => {
             >
               Update
             </Button>
-            <span>Last updated: 2025-10-8 16:20 32</span>
+            <span>
+              Last updated:{" "}
+              {lastUpdated
+                ? (() => {
+                    const date = new Date(lastUpdated);
+                    const year = date.getFullYear();
+                    const month = date.getMonth() + 1;
+                    const day = date.getDate();
+                    const hours = String(date.getHours()).padStart(2, "0");
+                    const minutes = String(date.getMinutes()).padStart(2, "0");
+                    const seconds = String(date.getSeconds()).padStart(2, "0");
+                    return `${year}-${month}-${day} ${hours}:${minutes} ${seconds}`;
+                  })()
+                : "N/A"}
+            </span>
           </div>
           <div className="update-button-content">
             <Button
@@ -390,21 +500,49 @@ const Table = () => {
       </div>
 
       <div className="table-wrapper">
-        <AntTable
-          columns={columns}
-          dataSource={tableData}
-          pagination={false}
-          className="game-store-table"
-          rowClassName="table-row"
-          bordered={false}
-          size="small"
-          scroll={{ x: "max-content" }}
-        />
+        {loading ? (
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              minHeight: "400px",
+            }}
+          >
+            <Spin size="large" tip="Loading games..." />
+          </div>
+        ) : error ? (
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              minHeight: "400px",
+              flexDirection: "column",
+            }}
+          >
+            <p style={{ color: "red", marginBottom: "16px" }}>Error: {error}</p>
+            <Button type="primary" onClick={() => window.location.reload()}>
+              Retry
+            </Button>
+          </div>
+        ) : (
+          <AntTable
+            columns={columns}
+            dataSource={tableData}
+            pagination={false}
+            className="game-store-table"
+            rowClassName="table-row"
+            bordered={false}
+            size="small"
+            scroll={{ x: "max-content" }}
+          />
+        )}
       </div>
       <div className="table-pagination">
         <div></div>
         <div className="main-pagination">
-          <div>Total 658</div>
+          <div>Total {totalItems}</div>
           <Pagination
             current={currentPage}
             total={totalItems}

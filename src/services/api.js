@@ -1,4 +1,5 @@
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://ok777-render.onrender.com/api/v1';
+// const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://ok777-render.onrender.com/api/v1';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://api-test.ok777.io:8092/api/v1';
 // const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:4000/api/v1';
 /**
  * API service for communicating with the backend
@@ -151,7 +152,7 @@ class ApiService {
   }
 
   /**
-   * Get provider games
+   * Get provider games from platform (for updating database)
    * @param {number} code - Product code (optional, if not provided, fetches all games)
    * @param {number} page - Page number (default: 1)
    * @param {number} limit - Number of games per page (default: 21)
@@ -161,6 +162,46 @@ class ApiService {
     let endpoint = `/operators/provider-games?page=${page}&limit=${limit}`;
     if (code !== undefined && code !== null) {
       endpoint += `&code=${code}`;
+    }
+    return this.request(endpoint);
+  }
+
+  /**
+   * Get provided games from local database (for displaying in game store)
+   * @param {number} code - Product code (optional, if not provided, fetches all games)
+   * @param {number} page - Page number (default: 1)
+   * @param {number} limit - Number of games per page (default: 21)
+   * @param {string} search - Search term for game name (optional)
+   * @param {string} category - Category name filter (optional)
+   * @param {string} provider - Provider name filter (optional)
+   * @returns {Promise} Game list with pagination from database
+   */
+  async getProvidedGames(code, page = 1, limit = 21, search, category, provider) {
+    let endpoint = `/operators/provided-games?page=${page}&limit=${limit}`;
+    if (code !== undefined && code !== null) {
+      endpoint += `&code=${code}`;
+    }
+    if (search !== undefined && search !== null && search !== "") {
+      endpoint += `&search=${encodeURIComponent(search)}`;
+    }
+    if (category !== undefined && category !== null && category !== "All") {
+      endpoint += `&category=${encodeURIComponent(category)}`;
+    }
+    if (provider !== undefined && provider !== null && provider !== "All") {
+      endpoint += `&provider=${encodeURIComponent(provider)}`;
+    }
+    return this.request(endpoint);
+  }
+
+  /**
+   * Update provider games - fetches all games from provider and adds them to database
+   * @param {number} code - Product code (optional)
+   * @returns {Promise} Response with inserted games count
+   */
+  async updateProviderGames(code) {
+    let endpoint = `/operators/provider-games`;
+    if (code !== undefined && code !== null) {
+      endpoint += `?code=${code}`;
     }
     return this.request(endpoint);
   }
@@ -187,6 +228,64 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify(payload),
     });
+  }
+
+  /**
+   * Get game categories from database
+   * @returns {Promise} Categories list
+   */
+  async getGameCategories() {
+    return this.request('/admin/game-categories');
+  }
+
+  /**
+   * Create a new game category
+   * @param {string} name - Category name
+   * @returns {Promise} Created category
+   */
+  async createGameCategory(name) {
+    return this.request('/admin/game-categories/add', {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    });
+  }
+
+  /**
+   * Update a game category
+   * @param {number} id - Category ID
+   * @param {string} name - Category name
+   * @returns {Promise} Updated category
+   */
+  async updateGameCategory(id, name) {
+    return this.request(`/admin/game-categories/${id}/update`, {
+      method: 'PUT',
+      body: JSON.stringify({ name }),
+    });
+  }
+
+  /**
+   * Delete a game category
+   * @param {number} id - Category ID
+   * @returns {Promise} Deletion response
+   */
+  async deleteGameCategory(id) {
+    return this.request(`/admin/game-categories/${id}/delete`, {
+      method: 'DELETE',
+    });
+  }
+
+  /**
+   * Get all products (includes provider information)
+   * @param {number} page - Page number (optional)
+   * @param {number} limit - Number of products per page (optional)
+   * @returns {Promise} Products list with provider field and pagination
+   */
+  async getProducts(page, limit) {
+    let endpoint = '/admin/products';
+    if (page !== undefined && limit !== undefined) {
+      endpoint += `?page=${page}&limit=${limit}`;
+    }
+    return this.request(endpoint);
   }
 }
 

@@ -19,8 +19,8 @@ const ProtectedRoute = ({ children, onLogout }) => {
   
   useEffect(() => {
     if (!token && onLogout) {
-      onLogout();
-    }
+        onLogout();
+      }
   }, [token, onLogout]);
   
   if (!token) {
@@ -169,8 +169,3 @@ const App = () => {
 };
 
 export default App;
-
-
-
-// curl http://localhost:4000/api/v1/operators/provider-games?code=1020
-

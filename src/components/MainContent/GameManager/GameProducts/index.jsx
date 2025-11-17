@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState } from "react";
 import {
   Button,
   Pagination,
@@ -19,40 +19,26 @@ import "./style.css";
 const { RangePicker } = DatePicker;
 
 const GameProducts = () => {
-  const { state, setGameManagerCurrentPage, fetchGames } = useAppContext();
+  const { state, setGameManagerCurrentPage } = useAppContext();
 
   // Get data from global context (all backend data is processed here)
   const { dataSource, loading, error, pagination } = state.gameManager;
-  const { currentPage, pageSize, totalItems } = pagination;
+  const { currentPage, pageSize } = pagination;
+
+  // Client-side pagination for games in manager
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginatedDataSource = dataSource.slice(startIndex, endIndex);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [launchingGame, setLaunchingGame] = useState(false);
+  const [launchedGameUrl, setLaunchedGameUrl] = useState("");
+  const [gameFrameKey, setGameFrameKey] = useState(0);
   
-  // Use ref to track if initial fetch has been done to prevent unnecessary re-renders
-  const hasFetchedRef = useRef(false);
-
-  // Fetch games from backend when component mounts - only once
-  useEffect(() => {
-    // Only fetch if we haven't fetched yet and dataSource is empty
-    if (!hasFetchedRef.current && dataSource.length === 0 && !loading) {
-      hasFetchedRef.current = true;
-      const loadGames = async () => {
-        const result = await fetchGames(undefined, currentPage, pageSize);
-        if (!result.success) {
-          message.error(
-            result.error ||
-              "Failed to load games. Please check if the backend is running."
-          );
-        } else if (result.data && result.data.length === 0) {
-          message.warning("No games found");
-        }
-      };
-      loadGames();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Empty deps - only run once on mount
+  // GameManager now only shows games that were added from GameStore
+  // No need to fetch from backend - games are managed via state
 
   // Filter states
   const [gameName, setGameName] = useState("");
@@ -101,17 +87,9 @@ const GameProducts = () => {
     // Add your search logic here
   };
 
-  const handlePageChange = async (page) => {
-    // Fetch games for the new page - fetchGames will update the pagination state
-    // Use pageSize from current state to ensure we have the latest value
-    const currentPageSize = state.gameManager.pagination.pageSize;
-    const result = await fetchGames(undefined, page, currentPageSize);
-    if (!result.success) {
-      message.error(
-        result.error ||
-          "Failed to load games. Please check if the backend is running."
-      );
-    }
+  const handlePageChange = (page) => {
+    // Just update the current page - games are already in state
+    setGameManagerCurrentPage(page);
   };
 
   const handleDeleteOk = () => {
@@ -176,8 +154,8 @@ const GameProducts = () => {
       });
 
       if (response.success && response.url) {
-        // Open game in new window/tab
-        window.open(response.url, "_blank", "noopener,noreferrer");
+        setLaunchedGameUrl(response.url);
+        setGameFrameKey((prev) => prev + 1);
         message.success("Game launched successfully!");
       } else {
         message.error(response.message || "Failed to launch game");
@@ -314,7 +292,7 @@ const GameProducts = () => {
           </div>
         ) : (
           <div className="products">
-            {dataSource.map((product) => (
+            {paginatedDataSource.map((product) => (
               <Product
                 key={product.key}
                 image={product.image}
@@ -327,19 +305,32 @@ const GameProducts = () => {
           </div>
         )}
         <div className="game-model">
-          <img
-            src="/model.png"
-            alt=""
-            style={{ width: "296px", height: "100%" }}
-          />
+          {launchingGame ? (
+            <div className="game-model-loader">
+              <Spin size="large" tip="Launching game..." />
+            </div>
+          ) : launchedGameUrl ? (
+            <iframe
+              key={gameFrameKey}
+              src={launchedGameUrl}
+              title="Launched game preview"
+              className="game-model-frame"
+              allowFullScreen
+              sandbox="allow-scripts allow-same-origin allow-forms allow-pointer-lock allow-popups allow-popups-to-escape-sandbox"
+            />
+          ) : (
+            <div className="game-model-placeholder">
+              <img src="/model.png" alt="" />
+            </div>
+          )}
         </div>
       </div>
       <div className="table-pagination1">
         <div className="main-pagination">
-          <div>Total {totalItems}</div>
+          <div>Total {dataSource.length}</div>
           <Pagination
             current={currentPage}
-            total={totalItems}
+            total={dataSource.length}
             pageSize={pageSize}
             onChange={handlePageChange}
             showSizeChanger={false}

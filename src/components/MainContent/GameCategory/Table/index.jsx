@@ -1,10 +1,12 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   Table as AntTable,
   Switch,
   Space,
   Button,
   Pagination,
+  Spin,
+  message,
 } from "antd";
 import AddOrEditModal from "../../../Modal/AddOrEditModal";
 import DeleteModal from "../../../Modal/DeleteModal";
@@ -22,11 +24,17 @@ const Table = () => {
     openGameCategoryDeleteModal,
     closeGameCategoryDeleteModal,
     confirmDeleteGameCategoryItem,
+    fetchGameCategories,
   } = useAppContext();
 
-  const { dataSource, pagination, modals } = state.gameCategory;
+  const { dataSource, pagination, modals, loading, error } = state.gameCategory;
   const { currentPage, pageSize, totalItems } = pagination;
   const { isAddEditModalOpen, isDeleteModalOpen, editingItem } = modals;
+
+  // Fetch categories on component mount
+  useEffect(() => {
+    fetchGameCategories();
+  }, [fetchGameCategories]);
 
   const handleStateChange = (record, checked) => {
     updateGameCategoryItem(record.key, { state: checked });
@@ -173,21 +181,49 @@ const Table = () => {
 
       <div className="line"></div>
       <div className="table-wrapper">
-        <AntTable
-          columns={columns}
-          dataSource={dataSource}
-          pagination={false}
-          className="game-category-table"
-          rowClassName="table-row"
-          bordered={false}
-          size="small"
-          scroll={{ x: "max-content", y: 106 * 5 }}
-        />
+        {loading ? (
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              minHeight: "400px",
+            }}
+          >
+            <Spin size="large" tip="Loading categories..." />
+          </div>
+        ) : error ? (
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              minHeight: "400px",
+              flexDirection: "column",
+            }}
+          >
+            <p style={{ color: "red", marginBottom: "16px" }}>Error: {error}</p>
+            <Button type="primary" onClick={fetchGameCategories}>
+              Retry
+            </Button>
+          </div>
+        ) : (
+          <AntTable
+            columns={columns}
+            dataSource={dataSource}
+            pagination={false}
+            className="game-category-table"
+            rowClassName="table-row"
+            bordered={false}
+            size="small"
+            scroll={{ x: "max-content", y: 106 * 5 }}
+          />
+        )}
       </div>
       <div className="table-pagination">
         <div></div>
         <div className="main-pagination">
-          <div>Total 658</div>
+          <div>Total {totalItems}</div>
           <Pagination
             current={currentPage}
             total={totalItems}
