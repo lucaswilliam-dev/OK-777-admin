@@ -1,5 +1,5 @@
-// const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://ok777-render.onrender.com/api/v1';
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://api-test.ok777.io:8092/api/v1';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://ok777-render.onrender.com/api/v1';
+// const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://api-test.ok777.io:8092/api/v1';
 // const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:4000/api/v1';
 /**
  * API service for communicating with the backend
