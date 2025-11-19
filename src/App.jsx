@@ -11,7 +11,15 @@ import GameProvider from "./components/MainContent/GameProvider";
 import GameManager from "./components/MainContent/GameManager";
 import GameStore from "./components/MainContent/GameStore";
 import GameTag from "./components/MainContent/GameTag";
+import { memo } from "react";
 import "./styles/responsive.css"
+
+// Memoized page components to prevent unnecessary re-renders
+const MemoizedGameCategory = memo(GameCategory);
+const MemoizedGameProvider = memo(GameProvider);
+const MemoizedGameManager = memo(GameManager);
+const MemoizedGameStore = memo(GameStore);
+const MemoizedGameTag = memo(GameTag);
 
 // Protected Route Component
 const ProtectedRoute = ({ children, onLogout }) => {
@@ -141,11 +149,11 @@ const AppContent = () => {
         <SideBar />
         <div className="main-content">
           <Routes>
-            <Route path="/game-category" element={<ProtectedRoute onLogout={handleLogout}><GameCategory /></ProtectedRoute>} />
-            <Route path="/game-provider" element={<ProtectedRoute onLogout={handleLogout}><GameProvider /></ProtectedRoute>} />
-            <Route path="/game-manager" element={<ProtectedRoute onLogout={handleLogout}><GameManager /></ProtectedRoute>} />
-            <Route path="/game-store" element={<ProtectedRoute onLogout={handleLogout}><GameStore /></ProtectedRoute>} />
-            <Route path="/game-tags" element={<ProtectedRoute onLogout={handleLogout}><GameTag /></ProtectedRoute>} />
+            <Route path="/game-category" element={<ProtectedRoute onLogout={handleLogout}><MemoizedGameCategory /></ProtectedRoute>} />
+            <Route path="/game-provider" element={<ProtectedRoute onLogout={handleLogout}><MemoizedGameProvider /></ProtectedRoute>} />
+            <Route path="/game-manager" element={<ProtectedRoute onLogout={handleLogout}><MemoizedGameManager /></ProtectedRoute>} />
+            <Route path="/game-store" element={<ProtectedRoute onLogout={handleLogout}><MemoizedGameStore /></ProtectedRoute>} />
+            <Route path="/game-tags" element={<ProtectedRoute onLogout={handleLogout}><MemoizedGameTag /></ProtectedRoute>} />
             <Route path="/dashboard" element={<Navigate to="/game-category" replace />} />
             <Route path="/" element={<Navigate to="/game-category" replace />} />
             <Route path="*" element={<Navigate to="/game-category" replace />} />

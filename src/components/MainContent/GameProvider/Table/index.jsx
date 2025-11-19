@@ -23,10 +23,14 @@ const Table = () => {
   const { currentPage, pageSize, totalItems } = pagination;
   const { isAddEditModalOpen, isDeleteModalOpen, editingItem } = modals;
 
-  // Fetch providers on component mount
+  // Fetch providers on component mount only if data is empty
   useEffect(() => {
-    fetchGameProviders();
-  }, [fetchGameProviders]);
+    // Only fetch if dataSource is empty to avoid refetching on navigation
+    if (dataSource.length === 0 && !loading) {
+      fetchGameProviders();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
 
   // Use totalItems for pagination
   const totalCount = totalItems || 0;

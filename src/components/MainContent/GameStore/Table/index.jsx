@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useRef } from "react";
+import React, { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { Table as AntTable, Button, Pagination, Input, Select, Spin, message } from "antd";
 import { SearchOutlined, UploadOutlined } from "@ant-design/icons";
 import AddOrEditModal from "../../../Modal/AddOrEditModal";
@@ -10,6 +10,11 @@ import StoreMove from "../../../Modal/StoreMove";
 import { useAppContext } from "../../../../contexts";
 import api from "../../../../services/api";
 import "./style.css";
+
+const STATUS_LABELS = {
+  ACTIVATED: "Active",
+  DEACTIVATED: "Deactive",
+};
 
 const Table = () => {
   const {
@@ -25,7 +30,7 @@ const Table = () => {
     isGameInManager,
   } = useAppContext();
 
-  const { dataSource, pagination, modals, loading, error, lastUpdated } = state.gameStore;
+  const { dataSource, pagination, modals, loading, error, lastUpdated, lastPing } = state.gameStore;
   const { currentPage, pageSize, totalItems } = pagination;
   const {
     isAddEditModalOpen,
@@ -44,6 +49,8 @@ const Table = () => {
   const [tags] = useState(["Hot", "New"]);
   const [dateRange] = useState(null);
   const [visibility] = useState(["EN", "ZH"]);
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [pingFilter, setPingFilter] = useState("All");
   
   // Store current search filters to preserve them during pagination
   const [currentSearchFilters, setCurrentSearchFilters] = useState({
@@ -60,7 +67,15 @@ const Table = () => {
     if (!hasFetchedRef.current && dataSource.length === 0 && !loading) {
       hasFetchedRef.current = true;
       const loadGames = async () => {
-        const result = await fetchGamesForStore(undefined, currentPage, pageSize);
+        const result = await fetchGamesForStore(
+          undefined, // productCode
+          currentPage, // page
+          pageSize, // limit
+          undefined, // search
+          undefined, // category
+          undefined, // provider
+          undefined // status - fetch all games initially
+        );
         if (!result.success) {
           message.error(
             result.error ||
@@ -73,44 +88,175 @@ const Table = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleSearch = async () => {
+  const formatDateTime = useCallback((value) => {
+    if (!value) return "N/A";
+    const date = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(date.getTime())) return "N/A";
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    const seconds = String(date.getSeconds()).padStart(2, "0");
+    return `${year}-${month}-${day} ${hours}:${minutes} ${seconds}`;
+  }, []);
+
+  // Apply filters function (used by both search button and dropdown changes)
+  const applyFilters = useCallback(async (resetPage = true) => {
     // Store current search filters
     const searchFilters = {
       search: gameName.trim() || undefined,
       category: category !== "All" ? category : undefined,
       provider: provider !== "All" ? provider : undefined,
+      status: statusFilter !== "All" ? statusFilter : undefined,
     };
     setCurrentSearchFilters(searchFilters);
     
-    // Reset to page 1 when searching
+    // Reset to page 1 when filtering, or use current page if just updating
+    const targetPage = resetPage ? 1 : currentPage;
+    
     const result = await fetchGamesForStore(
       undefined, // productCode
-      1, // page - reset to first page
+      targetPage, // page
       pageSize, // limit
       searchFilters.search, // search - game name
       searchFilters.category, // category
-      searchFilters.provider // provider
+      searchFilters.provider, // provider
+      searchFilters.status // status filter
     );
     
     if (!result.success) {
       message.error(
         result.error ||
-          "Failed to search games. Please check if the backend is running."
+          "Failed to filter games. Please check if the backend is running."
       );
     }
+  }, [gameName, category, provider, statusFilter, pageSize, currentPage, fetchGamesForStore]);
+
+  const handleSearch = async () => {
+    await applyFilters(true); // Reset to page 1 when searching
   };
 
+  const refetchCurrentGames = useCallback(() => {
+    const currentPageSize = pagination.pageSize;
+    return fetchGamesForStore(
+      undefined, // productCode
+      currentPage, // page
+      currentPageSize, // limit
+      currentSearchFilters.search, // search
+      currentSearchFilters.category, // category
+      currentSearchFilters.provider, // provider
+      statusFilter !== "All" ? statusFilter : undefined // status filter
+    );
+  }, [
+    currentPage, 
+    currentSearchFilters.category,
+    currentSearchFilters.provider,
+    currentSearchFilters.search,
+    statusFilter,
+    fetchGamesForStore,
+    pagination.pageSize,
+  ]);
+
+  // Handle category change - automatically filter
+  const handleCategoryChange = async (value) => {
+    setCategory(value);
+    // Note: We'll trigger filter in useEffect after state updates
+  };
+
+  // Handle provider change - automatically filter
+  const handleProviderChange = async (value) => {
+    setProvider(value);
+    // Note: We'll trigger filter in useEffect after state updates
+  };
+
+  // Handle status filter change - trigger backend filter
+  const handleStatusFilterChange = (value) => {
+    setStatusFilter(value);
+    // Status filter will trigger applyFilters via useEffect
+  };
+
+  // Handle ping filter change - client-side filtering only
+  const handlePingFilterChange = (value) => {
+    setPingFilter(value);
+    // Ping filtering is client-side, no need to call applyFilters
+  };
+
+  // Track previous filter values to detect changes
+  const prevFiltersRef = useRef({ category: "All", provider: "All", status: "All" });
+
+  // Auto-filter when category, provider, or status changes (but not on initial mount)
+  useEffect(() => {
+    // Only filter if:
+    // 1. We've already done initial fetch (to avoid filtering on initial mount)
+    // 2. The filter values have actually changed (user interaction)
+    const hasChanged = 
+      prevFiltersRef.current.category !== category || 
+      prevFiltersRef.current.provider !== provider ||
+      prevFiltersRef.current.status !== statusFilter;
+    
+    if (hasFetchedRef.current && hasChanged) {
+      // Update previous values
+      prevFiltersRef.current = { category, provider, status: statusFilter };
+      // Apply filters (this will show all games if all are "All")
+      applyFilters(true); // Reset to page 1 when filter changes
+    } else {
+      // Update previous values even if not filtering (for initial mount)
+      prevFiltersRef.current = { category, provider, status: statusFilter };
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [category, provider, statusFilter]); // Trigger when category, provider, or status changes
+
   // Build table data - dataSource already has all needed fields from backend
+  const statusOptions = useMemo(() => {
+    return [
+      { value: "All", label: "All" },
+      // Use label as value so backend receives "Active" or "DeActive"
+      { value: "Active", label: "Active" },
+      { value: "DeActive", label: "DeActive" },
+    ];
+  }, []);
+
+  const pingOptions = useMemo(() => {
+    return [
+      { value: "All", label: "All" },
+      { value: "online", label: "Online" },
+      { value: "offline", label: "Offline" },
+    ];
+  }, []);
+
   const tableData = useMemo(() => {
-    return (dataSource || []).map((item) => ({
-      ...item,
-      provider: item.provider || "-",
-      category: item.category || "-",
-      pingMs: item.pingMs, // Random ping value generated in mapGameStoreData
-      pingStatus: item.pingStatus || "offline",
-      inStore: typeof item.inStore === "boolean" ? item.inStore : false,
-    }));
-  }, [dataSource]);
+    // Status filtering is now done at backend level, so we just map the data
+    let mapped = (dataSource || []).map((item) => {
+      const statusCode = (item.status || "")
+        .toString()
+        .toUpperCase()
+        .trim();
+      return {
+        ...item,
+        provider: item.provider || "-",
+        category: item.category || "-",
+        pingMs:
+          typeof item.pingMs === "number" && !Number.isNaN(item.pingMs)
+            ? item.pingMs
+            : null,
+        pingStatus: item.pingStatus || "unknown",
+        inStore: typeof item.inStore === "boolean" ? item.inStore : false,
+        status: statusCode,
+        statusLabel: STATUS_LABELS[statusCode] || statusCode || "Unknown",
+      };
+    });
+
+    // Apply client-side ping filtering
+    if (pingFilter !== "All") {
+      mapped = mapped.filter((item) => {
+        const pingStatus = item.pingStatus || (item.pingMs !== null ? "online" : "offline");
+        return pingStatus === pingFilter;
+      });
+    }
+
+    return mapped;
+  }, [dataSource, pingFilter]);
 
   const columns = [
     {
@@ -144,12 +290,21 @@ const Table = () => {
       width: 160,
       align: "center",
       render: (_, record) => {
-        // record.state is boolean in current data
-        const isAvailable = !!record.state;
-        const label = isAvailable ? "Available" : "Not available";
+        // Get status from database and normalize it
+        const statusCode = (record.status || "")
+          .toString()
+          .toUpperCase()
+          .trim();
+        
+        // Map status to label: ACTIVATED -> Active, DEACTIVATED -> DeActive
+        const label = STATUS_LABELS[statusCode] || statusCode || "Unknown";
+        
+        // Set class based on status: ACTIVATED = available (green), DEACTIVATED = unavailable (grey)
+        const isAvailable = statusCode === "ACTIVATED";
         const cls = isAvailable
           ? "state-badge available"
           : "state-badge unavailable";
+        
         return <span className={cls}>{label}</span>;
       },
     },
@@ -160,22 +315,24 @@ const Table = () => {
       width: 140,
       align: "center",
       render: (pingMs, record) => {
-        // Prefer numeric ping if provided; otherwise infer from createTime for demo purposes
-        const value = typeof pingMs === "number" ? pingMs : undefined;
-        const offline = record.pingStatus === "offline";
-        let cls = "ping-badge offline";
-        let text = "Offline";
-        if (!offline && typeof value === "number") {
-          if (value <= 80) {
-            cls = "ping-badge good";
-          } else if (value <= 200) {
+        const value = typeof pingMs === "number" ? pingMs : null;
+        const status = record.pingStatus || (value !== null ? "online" : "offline");
+
+        if (status === "offline") {
+          return <span className="ping-badge offline">Offline</span>;
+        }
+
+        if (value !== null) {
+          let cls = "ping-badge good";
+          if (value > 80 && value <= 200) {
             cls = "ping-badge warn";
-          } else {
+          } else if (value > 200) {
             cls = "ping-badge slow";
           }
-          text = `${value}ms`;
+          return <span className={cls}>{`${value}ms`}</span>;
         }
-        return <span className={cls}>{text}</span>;
+
+        return <span className="ping-badge offline">Unknown</span>;
       },
     },
     {
@@ -184,8 +341,8 @@ const Table = () => {
       width: 160,
       align: "center",
       render: (_, record) => {
-        const isOffline = record.pingStatus === "offline";
-        const isInManager = isGameInManager(record.key);
+        const disableActions = record.pingStatus === "offline";
+        const isInManager = isGameInManager(record.key, record);
         
         if (isInManager) {
           // Show Remove button if game is in manager
@@ -194,10 +351,12 @@ const Table = () => {
               type="default"
               danger
               size="small"
-              className={`action-btn remove-btn${isOffline ? " disabled" : ""}`}
-              disabled={isOffline}
+              className={`action-btn remove-btn${
+                disableActions ? " disabled" : ""
+              }`}
+              disabled={disableActions}
               onClick={() => {
-                if (!isOffline) {
+                if (!disableActions) {
                   // Remove game from manager
                   removeGameFromManager(record.key);
                 }
@@ -212,10 +371,12 @@ const Table = () => {
             <Button
               type="primary"
               size="small"
-              className={`action-btn add-btn${isOffline ? " disabled" : ""}`}
-              disabled={isOffline}
+              className={`action-btn add-btn${
+                disableActions ? " disabled" : ""
+              }`}
+              disabled={disableActions}
               onClick={() => {
-                if (!isOffline) {
+                if (!disableActions) {
                   // Add game to manager
                   addGameToManager(record);
                 }
@@ -301,10 +462,24 @@ const Table = () => {
   };
 
   // Ping modal handlers
-  const handlePingOk = () => {
-    console.log("Ping confirmed");
+  const handlePingOk = async () => {
     closeGameStoreModal("isPingModalOpen");
-    // Add your ping logic here
+    const hideLoading = message.loading("Refreshing ping values...", 0);
+    try {
+      const result = await refetchCurrentGames();
+      hideLoading();
+      if (result.success) {
+        message.success("Ping values updated.");
+      } else {
+        message.error(
+          result.error || "Failed to refresh ping values. Please try again."
+        );
+      }
+    } catch (error) {
+      hideLoading();
+      console.error("Ping refresh failed:", error);
+      message.error("Failed to refresh ping values. Please try again.");
+    }
   };
 
   const handlePingCancel = () => {
@@ -355,7 +530,7 @@ const Table = () => {
         provider: "ag",
         category: "Slot",
         pingMs: undefined,
-        pingStatus: "offline",
+        pingStatus: "unknown",
         inStore: false,
         state: true,
         createTime: new Date().toLocaleString(),
@@ -370,19 +545,64 @@ const Table = () => {
     closeGameStoreModal("isAddEditModalOpen");
   };
 
-  const categoryOptions = [
+  // Get dropdown data from context cache
+  const { fetchDropdownData, state: appState } = useAppContext();
+  const { dropdowns } = appState;
+  const [categoryOptions, setCategoryOptions] = useState([
     { value: "All", label: "All" },
-    { value: "Slot", label: "Slot" },
-    { value: "LiveCasino", label: "LiveCasino" },
-    { value: "TableGames", label: "TableGames" },
-  ];
+  ]);
+  const [providerOptions, setProviderOptions] = useState([
+    { value: "All", label: "All" },
+  ]);
 
-  const providerOptions = [
-    { value: "All", label: "All" },
-    { value: "ag", label: "ag" },
-    { value: "allbet", label: "allbet" },
-    { value: "bbin", label: "bbin" },
-  ];
+  // Fetch categories and providers from cache (only if not already loaded)
+  useEffect(() => {
+    const loadDropdownData = async () => {
+      // Use cached data if available
+      if (dropdowns.categories.length > 0 && dropdowns.providers.length > 0) {
+        const categoryOpts = [
+          { value: "All", label: "All" },
+          ...dropdowns.categories.map((cat) => ({
+            value: cat.name,
+            label: cat.name,
+          })),
+        ];
+        const providerOpts = [
+          { value: "All", label: "All" },
+          ...dropdowns.providers.map((prov) => ({
+            value: prov,
+            label: prov,
+          })),
+        ];
+        setCategoryOptions(categoryOpts);
+        setProviderOptions(providerOpts);
+      } else {
+        // Fetch if not cached
+        const result = await fetchDropdownData();
+        if (result.success) {
+          const categoryOpts = [
+            { value: "All", label: "All" },
+            ...result.categories.map((cat) => ({
+              value: cat.name,
+              label: cat.name,
+            })),
+          ];
+          const providerOpts = [
+            { value: "All", label: "All" },
+            ...result.providers.map((prov) => ({
+              value: prov,
+              label: prov,
+            })),
+          ];
+          setCategoryOptions(categoryOpts);
+          setProviderOptions(providerOpts);
+        }
+      }
+    };
+
+    loadDropdownData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
 
   return (
     <div className="table-container">
@@ -407,18 +627,22 @@ const Table = () => {
             <span className="filter-label">Provider:</span>
             <Select
               value={provider}
-              onChange={setProvider}
+              onChange={handleProviderChange}
               className="filter-select filter-select1 filter-select-game-store"
               options={providerOptions}
+              loading={dropdowns.loading}
+              placeholder="Select Provider"
             />
           </div>
           <div className="filter-item">
             <span className="filter-label">Category:</span>
             <Select
               value={category}
-              onChange={setCategory}
+              onChange={handleCategoryChange}
               className="filter-select filter-select-game-store"
               options={categoryOptions}
+              loading={dropdowns.loading}
+              placeholder="Select Category"
             />
           </div>
           <Button
@@ -434,19 +658,21 @@ const Table = () => {
           <div className="filter-item filter-item-state">
             <span className="filter-label">State:</span>
             <Select
-              value={category}
-              onChange={setCategory}
+              value={statusFilter}
+              onChange={handleStatusFilterChange}
               className="filter-select filter-select-game-store"
-              options={categoryOptions}
+              options={statusOptions}
+              placeholder="Select Status"
             />
           </div>
           <div className="filter-item filter-item-ping">
             <span className="filter-label">Ping:</span>
             <Select
-              value={category}
-              onChange={setCategory}
+              value={pingFilter}
+              onChange={handlePingFilterChange}
               className="filter-select filter-select-game-store"
-              options={categoryOptions}
+              options={pingOptions}
+              placeholder="Select Ping Status"
             />
           </div>
         </div>
@@ -464,19 +690,7 @@ const Table = () => {
               Update
             </Button>
             <span>
-              Last updated:{" "}
-              {lastUpdated
-                ? (() => {
-                    const date = new Date(lastUpdated);
-                    const year = date.getFullYear();
-                    const month = date.getMonth() + 1;
-                    const day = date.getDate();
-                    const hours = String(date.getHours()).padStart(2, "0");
-                    const minutes = String(date.getMinutes()).padStart(2, "0");
-                    const seconds = String(date.getSeconds()).padStart(2, "0");
-                    return `${year}-${month}-${day} ${hours}:${minutes} ${seconds}`;
-                  })()
-                : "N/A"}
+              Last updated: {formatDateTime(lastUpdated)}
             </span>
           </div>
           <div className="update-button-content">
@@ -487,7 +701,7 @@ const Table = () => {
             >
               Ping
             </Button>
-            <span>Last ping: 2025-10-8 16:20 32</span>
+            <span>Last ping: {formatDateTime(lastPing)}</span>
           </div>
         </div>
         <Button

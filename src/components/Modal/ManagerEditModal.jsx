@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Button, Modal, Input, Upload, Select } from "antd";
 import { CameraOutlined } from "@ant-design/icons";
+import { useAppContext } from "../../contexts";
 import "./ManagerEditModal.css";
 
 const ManagerEditModal = ({
@@ -10,6 +11,8 @@ const ManagerEditModal = ({
   initialData = null,
 }) => {
   const safeData = initialData || {};
+  const { fetchDropdownData, state } = useAppContext();
+  const { dropdowns } = state;
   
   const [fileList, setFileList] = useState([]);
   const [zhName, setZhName] = useState(safeData.zhName || "");
@@ -20,6 +23,62 @@ const ManagerEditModal = ({
   const [visibility, setVisibility] = useState(
     safeData.visibility || ["EN", "ZH", "DE"]
   );
+  
+  // State for dropdown options
+  const [providerOptions, setProviderOptions] = useState([
+    { value: "All", label: "All" },
+  ]);
+  const [categoryOptions, setCategoryOptions] = useState([
+    { value: "All", label: "All" },
+  ]);
+
+  // Load dropdown data from database
+  useEffect(() => {
+    const loadDropdownData = async () => {
+      // Use cached data if available
+      if (dropdowns.categories.length > 0 && dropdowns.providers.length > 0) {
+        const categoryOpts = [
+          { value: "All", label: "All" },
+          ...dropdowns.categories.map((cat) => ({
+            value: cat.name,
+            label: cat.name,
+          })),
+        ];
+        const providerOpts = [
+          { value: "All", label: "All" },
+          ...dropdowns.providers.map((prov) => ({
+            value: prov,
+            label: prov,
+          })),
+        ];
+        setCategoryOptions(categoryOpts);
+        setProviderOptions(providerOpts);
+      } else {
+        // Fetch if not cached
+        const result = await fetchDropdownData();
+        if (result.success) {
+          const categoryOpts = [
+            { value: "All", label: "All" },
+            ...result.categories.map((cat) => ({
+              value: cat.name,
+              label: cat.name,
+            })),
+          ];
+          const providerOpts = [
+            { value: "All", label: "All" },
+            ...result.providers.map((prov) => ({
+              value: prov,
+              label: prov,
+            })),
+          ];
+          setCategoryOptions(categoryOpts);
+          setProviderOptions(providerOpts);
+        }
+      }
+    };
+
+    loadDropdownData();
+  }, [fetchDropdownData, dropdowns.categories, dropdowns.providers]);
 
   useEffect(() => {
     if (open) {
@@ -69,20 +128,6 @@ const ManagerEditModal = ({
   const beforeUpload = () => {
     return false; // Prevent auto upload
   };
-
-  const providerOptions = [
-    { value: "All", label: "All" },
-    { value: "ag", label: "ag" },
-    { value: "allbet", label: "allbet" },
-    { value: "bbin", label: "bbin" },
-  ];
-
-  const categoryOptions = [
-    { value: "All", label: "All" },
-    { value: "Slot", label: "Slot" },
-    { value: "LiveCasino", label: "LiveCasino" },
-    { value: "TableGames", label: "TableGames" },
-  ];
 
   const tagOptions = [
     { value: "Hot", label: "Hot" },
@@ -172,6 +217,11 @@ const ManagerEditModal = ({
             onChange={setProvider}
             options={providerOptions}
             placeholder="Select provider"
+            loading={dropdowns.loading}
+            showSearch
+            filterOption={(input, option) =>
+              (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+            }
           />
         </div>
 
@@ -184,6 +234,11 @@ const ManagerEditModal = ({
             onChange={setCategory}
             options={categoryOptions}
             placeholder="Select category"
+            loading={dropdowns.loading}
+            showSearch
+            filterOption={(input, option) =>
+              (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+            }
           />
         </div>
 

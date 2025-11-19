@@ -31,10 +31,14 @@ const Table = () => {
   const { currentPage, pageSize, totalItems } = pagination;
   const { isAddEditModalOpen, isDeleteModalOpen, editingItem } = modals;
 
-  // Fetch categories on component mount
+  // Fetch categories on component mount only if data is empty
   useEffect(() => {
-    fetchGameCategories();
-  }, [fetchGameCategories]);
+    // Only fetch if dataSource is empty to avoid refetching on navigation
+    if (dataSource.length === 0 && !loading) {
+      fetchGameCategories();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
 
   const handleStateChange = (record, checked) => {
     updateGameCategoryItem(record.key, { state: checked });
@@ -120,9 +124,13 @@ const Table = () => {
     openGameCategoryAddEditModal();
   };
 
-  const handleDeleteOk = () => {
-    console.log("Delete confirmed");
-    confirmDeleteGameCategoryItem();
+  const handleDeleteOk = async () => {
+    const result = await confirmDeleteGameCategoryItem();
+    if (result.success) {
+      message.success("Category deleted successfully");
+    } else {
+      message.error(result.error || "Failed to delete category");
+    }
   };
 
   const handleDeleteCancel = () => {
@@ -130,30 +138,45 @@ const Table = () => {
     closeGameCategoryDeleteModal();
   };
 
-  const handleOk = (data) => {
-    // Handle form submission here
-    console.log("Name:", data.name);
-    console.log("Visibility:", data.visibility);
-    if (editingItem) {
-      // Update existing item
-      updateGameCategoryItem(editingItem.key, {
-        name: data.name,
-        visibility: data.visibility,
-      });
-    } else {
-      // Add new item
-      const newItem = {
-        key: Date.now().toString(),
-        id: Date.now(),
-        name: data.name,
-        icon: "",
-        state: true,
-        createTime: new Date().toLocaleString(),
-        visibility: data.visibility,
-      };
-      addGameCategoryItem(newItem);
+  const handleOk = async (data) => {
+    if (!data.name || data.name.trim() === "") {
+      message.error("Category name is required");
+      return;
     }
-    closeGameCategoryAddEditModal();
+
+    try {
+      if (editingItem) {
+        // Update existing item
+        const result = await updateGameCategoryItem(editingItem.key, {
+          name: data.name,
+          visibility: data.visibility,
+        });
+        if (result.success) {
+          message.success("Category updated successfully");
+          closeGameCategoryAddEditModal();
+        } else {
+          message.error(result.error || "Failed to update category");
+        }
+      } else {
+        // Add new item
+        const newItem = {
+          name: data.name,
+          icon: "",
+          state: true,
+          visibility: data.visibility,
+        };
+        const result = await addGameCategoryItem(newItem);
+        if (result.success) {
+          message.success("Category created successfully");
+          closeGameCategoryAddEditModal();
+        } else {
+          message.error(result.error || "Failed to create category");
+        }
+      }
+    } catch (error) {
+      console.error("Error saving category:", error);
+      message.error(error.message || "Failed to save category");
+    }
   };
 
   const handleCancel = () => {

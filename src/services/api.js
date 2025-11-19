@@ -1,9 +1,7 @@
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://ok777-render.onrender.com/api/v1';
-// const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://api-test.ok777.io:8092/api/v1';
+// const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://ok777-render.onrender.com/api/v1';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://api-test.ok777.io:8092/api/v1';
 // const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:4000/api/v1';
-/**
- * API service for communicating with the backend
- */
+
 class ApiService {
   /**
    * Generic fetch wrapper with error handling
@@ -174,9 +172,10 @@ class ApiService {
    * @param {string} search - Search term for game name (optional)
    * @param {string} category - Category name filter (optional)
    * @param {string} provider - Provider name filter (optional)
+   * @param {string} status - Status filter: "Active", "DeActive", or "All" (optional)
    * @returns {Promise} Game list with pagination from database
    */
-  async getProvidedGames(code, page = 1, limit = 21, search, category, provider) {
+  async getProvidedGames(code, page = 1, limit = 21, search, category, provider, status) {
     let endpoint = `/operators/provided-games?page=${page}&limit=${limit}`;
     if (code !== undefined && code !== null) {
       endpoint += `&code=${code}`;
@@ -189,6 +188,9 @@ class ApiService {
     }
     if (provider !== undefined && provider !== null && provider !== "All") {
       endpoint += `&provider=${encodeURIComponent(provider)}`;
+    }
+    if (status !== undefined && status !== null && status !== "All") {
+      endpoint += `&status=${encodeURIComponent(status)}`;
     }
     return this.request(endpoint);
   }
@@ -284,6 +286,82 @@ class ApiService {
     let endpoint = '/admin/products';
     if (page !== undefined && limit !== undefined) {
       endpoint += `?page=${page}&limit=${limit}`;
+    }
+    return this.request(endpoint);
+  }
+
+  /**
+   * Get unique providers from products
+   * @returns {Promise} Array of unique provider names
+   */
+  async getProviders() {
+    try {
+      // Get all products (without pagination to get all providers)
+      const response = await this.getProducts();
+      
+      // Handle different response formats
+      // Response can be: { code: 200, data: [...] } or just [...]
+      let products = [];
+      if (Array.isArray(response)) {
+        products = response;
+      } else if (response && response.data) {
+        products = Array.isArray(response.data) ? response.data : [];
+      } else if (response && response.code === 200 && response.data) {
+        products = Array.isArray(response.data) ? response.data : [];
+      }
+      
+      // Extract unique providers from products
+      const providers = [...new Set(products.map(p => p.provider).filter(Boolean))];
+      
+      return {
+        success: true,
+        data: providers.sort() // Sort alphabetically
+      };
+    } catch (error) {
+      console.error('Error fetching providers:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to fetch providers'
+      };
+    }
+  }
+
+  /**
+   * Update game inManager field
+   * @param {number} gameId - Game ID
+   * @param {boolean} inManager - Whether game is in manager
+   * @returns {Promise} Updated game
+   */
+  async updateGameInManager(gameId, inManager) {
+    return this.request(`/admin/provider-games/${gameId}/in-manager`, {
+      method: 'POST',
+      body: JSON.stringify({ inManager }),
+    });
+  }
+
+  /**
+   * Get games in manager
+   * @param {number} page - Page number (default: 1)
+   * @param {number} limit - Number of games per page (default: 21)
+   * @param {string} search - Search term for game name (optional)
+   * @param {string} categoryId - Category ID filter (optional)
+   * @param {string} providerId - Provider ID filter (optional)
+   * @param {string} status - Status filter (optional)
+   * @returns {Promise} Game list with pagination
+   */
+  async getGamesInManager(page = 1, limit = 21, search, categoryId, providerId, status) {
+    let endpoint = `/admin/games-in-manager?page=${page}&limit=${limit}`;
+    if (search !== undefined && search !== null && search !== "") {
+      endpoint += `&search=${encodeURIComponent(search)}`;
+    }
+    if (categoryId !== undefined && categoryId !== null && categoryId !== "All" && categoryId !== "all") {
+      endpoint += `&categoryId=${encodeURIComponent(categoryId)}`;
+    }
+    if (providerId !== undefined && providerId !== null && providerId !== "All" && providerId !== "all") {
+      endpoint += `&providerId=${encodeURIComponent(providerId)}`;
+    }
+    if (status !== undefined && status !== null && status !== "All") {
+      endpoint += `&status=${encodeURIComponent(status)}`;
     }
     return this.request(endpoint);
   }

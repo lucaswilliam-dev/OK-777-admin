@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Button,
   Pagination,
@@ -19,16 +19,27 @@ import "./style.css";
 const { RangePicker } = DatePicker;
 
 const GameProducts = () => {
-  const { state, setGameManagerCurrentPage } = useAppContext();
+  const { state, setGameManagerCurrentPage, fetchGamesInManager } = useAppContext();
 
   // Get data from global context (all backend data is processed here)
   const { dataSource, loading, error, pagination } = state.gameManager;
   const { currentPage, pageSize } = pagination;
 
-  // Client-side pagination for games in manager
-  const startIndex = (currentPage - 1) * pageSize;
-  const endIndex = startIndex + pageSize;
-  const paginatedDataSource = dataSource.slice(startIndex, endIndex);
+  // Fetch games in manager only if data is empty
+  // This prevents unnecessary re-fetching when navigating back to the page
+  useEffect(() => {
+    // Only fetch if no data exists and we're not currently loading
+    if (dataSource.length === 0 && !loading) {
+      const loadGames = async () => {
+        await fetchGamesInManager(currentPage, pageSize);
+      };
+      loadGames();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount - data persistence is handled by context state
+
+  // Server-side pagination - dataSource already contains paginated results
+  const paginatedDataSource = dataSource;
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -48,20 +59,64 @@ const GameProducts = () => {
   const [dateRange, setDateRange] = useState(null);
   const [visibility, setVisibility] = useState(["EN", "ZH"]);
 
-  // Options for dropdowns
-  const categoryOptions = [
+  // Get dropdown data from context cache
+  const { fetchDropdownData, state: appState } = useAppContext();
+  const { dropdowns } = appState;
+  const [categoryOptions, setCategoryOptions] = useState([
     { value: "All", label: "All" },
-    { value: "Slot", label: "Slot" },
-    { value: "LiveCasino", label: "LiveCasino" },
-    { value: "TableGames", label: "TableGames" },
-  ];
+  ]);
+  const [providerOptions, setProviderOptions] = useState([
+    { value: "All", label: "All" },
+  ]);
 
-  const providerOptions = [
-    { value: "All", label: "All" },
-    { value: "ag", label: "ag" },
-    { value: "allbet", label: "allbet" },
-    { value: "bbin", label: "bbin" },
-  ];
+  // Fetch categories and providers from cache (only if not already loaded)
+  useEffect(() => {
+    const loadDropdownData = async () => {
+      // Use cached data if available
+      if (dropdowns.categories.length > 0 && dropdowns.providers.length > 0) {
+        const categoryOpts = [
+          { value: "All", label: "All" },
+          ...dropdowns.categories.map((cat) => ({
+            value: cat.name,
+            label: cat.name,
+          })),
+        ];
+        const providerOpts = [
+          { value: "All", label: "All" },
+          ...dropdowns.providers.map((prov) => ({
+            value: prov,
+            label: prov,
+          })),
+        ];
+        setCategoryOptions(categoryOpts);
+        setProviderOptions(providerOpts);
+      } else {
+        // Fetch if not cached
+        const result = await fetchDropdownData();
+        if (result.success) {
+          const categoryOpts = [
+            { value: "All", label: "All" },
+            ...result.categories.map((cat) => ({
+              value: cat.name,
+              label: cat.name,
+            })),
+          ];
+          const providerOpts = [
+            { value: "All", label: "All" },
+            ...result.providers.map((prov) => ({
+              value: prov,
+              label: prov,
+            })),
+          ];
+          setCategoryOptions(categoryOpts);
+          setProviderOptions(providerOpts);
+        }
+      }
+    };
+
+    loadDropdownData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
 
   const tagOptions = [
     { value: "Hot", label: "Hot" },
@@ -87,9 +142,10 @@ const GameProducts = () => {
     // Add your search logic here
   };
 
-  const handlePageChange = (page) => {
-    // Just update the current page - games are already in state
+  const handlePageChange = async (page) => {
+    // Fetch games for the new page
     setGameManagerCurrentPage(page);
+    await fetchGamesInManager(page, pageSize);
   };
 
   const handleDeleteOk = () => {
@@ -122,11 +178,15 @@ const GameProducts = () => {
   };
 
   const handleEditClick = (product) => {
+    // Use provider name and category name from the product data
+    const providerName = product?.provider || product?.fullData?.provider || "All";
+    const categoryName = product?.category || product?.fullData?.category || product?.gameType || "All";
+    
     setEditingProduct({
       zhName: product?.cnName || product?.gameName || "",
       enName: product?.enName || product?.gameName || "",
-      provider: product?.productCode?.toString() || "All",
-      category: product?.gameType || "All",
+      provider: providerName, // Use provider name instead of productCode
+      category: categoryName, // Use category name instead of gameType
       tags: ["Hot", "New"], // TODO: Get from product data if available
       visibility: ["EN", "ZH", "DE"], // TODO: Get from product data if available
       coverImage: product?.image || "/cat.jpg",
@@ -196,6 +256,7 @@ const GameProducts = () => {
               onChange={setCategory}
               className="filter-select"
               options={categoryOptions}
+              loading={dropdowns.loading}
             />
           </div>
           <div className="filter-item">
@@ -205,6 +266,7 @@ const GameProducts = () => {
               onChange={setProvider}
               className="filter-select filter-select1"
               options={providerOptions}
+              loading={dropdowns.loading}
             />
           </div>
           <div className="filter-item">
@@ -327,10 +389,10 @@ const GameProducts = () => {
       </div>
       <div className="table-pagination1">
         <div className="main-pagination">
-          <div>Total {dataSource.length}</div>
+          <div>Total {pagination.totalItems || 0}</div>
           <Pagination
             current={currentPage}
-            total={dataSource.length}
+            total={pagination.totalItems || 0}
             pageSize={pageSize}
             onChange={handlePageChange}
             showSizeChanger={false}
