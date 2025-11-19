@@ -1,6 +1,45 @@
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://ok777-render.onrender.com/api/v1';
+// const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://ok777-render.onrender.com/api/v1';
 // const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://api-test.ok777.io:8092/api/v1';
-// const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:4000/api/v1';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:4000/api/v1';
+
+/**
+ * Get the server base URL (without /api/v1)
+ * @returns {string} Server base URL
+ */
+export const getServerBaseURL = () => {
+  const baseUrl = API_BASE_URL.replace(/\/api\/v1$/, '');
+  // Remove trailing slash if present
+  return baseUrl.replace(/\/$/, '');
+};
+
+/**
+ * Convert relative image path to full URL
+ * @param {string} imagePath - Image path (relative or absolute)
+ * @returns {string} Full image URL
+ */
+export const getImageURL = (imagePath) => {
+  if (!imagePath) return null;
+  
+  // If it's already a full URL (http/https) or data URL, return as is
+  if (imagePath.startsWith('http://') || imagePath.startsWith('https://') || imagePath.startsWith('data:')) {
+    return imagePath;
+  }
+  
+  // Get base URL without trailing slash
+  const baseUrl = getServerBaseURL();
+  
+  // Normalize the image path - ensure it starts with /
+  let normalizedPath = imagePath;
+  if (!normalizedPath.startsWith('/')) {
+    normalizedPath = '/' + normalizedPath;
+  }
+  
+  // Remove double slashes that might occur
+  normalizedPath = normalizedPath.replace(/\/+/g, '/');
+  
+  // Construct the full URL
+  return `${baseUrl}${normalizedPath}`;
+};
 
 class ApiService {
   /**
@@ -340,16 +379,31 @@ class ApiService {
   }
 
   /**
+   * Update a game
+   * @param {number} gameId - Game ID
+   * @param {Object} gameData - Game data to update
+   * @returns {Promise} Updated game
+   */
+  async updateGame(gameId, gameData) {
+    return this.request(`/admin/provider-games/${gameId}/update`, {
+      method: 'PUT',
+      body: JSON.stringify(gameData),
+    });
+  }
+
+  /**
    * Get games in manager
    * @param {number} page - Page number (default: 1)
    * @param {number} limit - Number of games per page (default: 21)
    * @param {string} search - Search term for game name (optional)
-   * @param {string} categoryId - Category ID filter (optional)
-   * @param {string} providerId - Provider ID filter (optional)
+   * @param {string} categoryId - Category filter (accepts ID or name, optional)
+   * @param {string} providerId - Provider filter (accepts code or name, optional)
    * @param {string} status - Status filter (optional)
+   * @param {string} startDate - Created at start date ISO string (optional)
+   * @param {string} endDate - Created at end date ISO string (optional)
    * @returns {Promise} Game list with pagination
    */
-  async getGamesInManager(page = 1, limit = 21, search, categoryId, providerId, status) {
+  async getGamesInManager(page = 1, limit = 21, search, categoryId, providerId, status, startDate, endDate) {
     let endpoint = `/admin/games-in-manager?page=${page}&limit=${limit}`;
     if (search !== undefined && search !== null && search !== "") {
       endpoint += `&search=${encodeURIComponent(search)}`;
@@ -363,7 +417,49 @@ class ApiService {
     if (status !== undefined && status !== null && status !== "All") {
       endpoint += `&status=${encodeURIComponent(status)}`;
     }
+    if (startDate) {
+      endpoint += `&startDate=${encodeURIComponent(startDate)}`;
+    }
+    if (endDate) {
+      endpoint += `&endDate=${encodeURIComponent(endDate)}`;
+    }
     return this.request(endpoint);
+  }
+
+  /**
+   * Create a new product
+   * @param {Object} productData - Product data
+   * @returns {Promise} Created product
+   */
+  async createProduct(productData) {
+    return this.request('/admin/products', {
+      method: 'POST',
+      body: JSON.stringify(productData),
+    });
+  }
+
+  /**
+   * Update a product
+   * @param {number} id - Product ID
+   * @param {Object} productData - Product data to update
+   * @returns {Promise} Updated product
+   */
+  async updateProduct(id, productData) {
+    return this.request(`/admin/products/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(productData),
+    });
+  }
+
+  /**
+   * Delete a product
+   * @param {number} id - Product ID
+   * @returns {Promise} Deletion response
+   */
+  async deleteProduct(id) {
+    return this.request(`/admin/products/${id}`, {
+      method: 'DELETE',
+    });
   }
 }
 

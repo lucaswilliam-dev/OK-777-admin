@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { Button, Modal, Input, Upload, Select } from "antd";
+import { Button, Modal, Input, Upload, Select, message } from "antd";
 import { CameraOutlined } from "@ant-design/icons";
 import { useAppContext } from "../../contexts";
+import { getImageURL } from "../../services/api";
 import "./ManagerEditModal.css";
 
 const ManagerEditModal = ({
@@ -23,6 +24,7 @@ const ManagerEditModal = ({
   const [visibility, setVisibility] = useState(
     safeData.visibility || ["EN", "ZH", "DE"]
   );
+  const [loading, setLoading] = useState(false);
   
   // State for dropdown options
   const [providerOptions, setProviderOptions] = useState([
@@ -89,25 +91,56 @@ const ManagerEditModal = ({
       setCategory(data.category || "All");
       setTags(data.tags || ["Hot", "New"]);
       setVisibility(data.visibility || ["EN", "ZH", "DE"]);
-      setFileList(data.coverImage ? [{ url: data.coverImage }] : []);
+      // Set fileList with existing image URL if available
+      if (data.coverImage) {
+        setFileList([{ 
+          url: data.coverImage,
+          status: 'done',
+          name: 'cover-image'
+        }]);
+      } else {
+        setFileList([]);
+      }
+      setLoading(false);
+    } else {
+      // Reset loading when modal closes
+      setLoading(false);
     }
   }, [open, initialData]);
 
-  const handleOk = () => {
-    if (onOk) {
-      onOk({
-        zhName,
-        enName,
-        provider,
-        category,
-        tags,
-        visibility,
-        fileList,
-      });
+  const handleOk = async () => {
+    // Validate required fields
+    if (!zhName.trim() && !enName.trim()) {
+      message.warning("Please enter at least one name (ZH or EN)");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      if (onOk) {
+        await onOk({
+          zhName: zhName.trim(),
+          enName: enName.trim(),
+          provider: provider === "All" ? undefined : provider,
+          category: category === "All" ? undefined : category,
+          tags,
+          visibility,
+          fileList, // Pass fileList so parent can check for originFileObj
+          coverImage: coverImageUrl, // Pass current cover image URL for comparison
+        });
+        // Loading will be reset by parent component after successful update
+      }
+    } catch (error) {
+      console.error("Error in handleOk:", error);
+      message.error(error.message || "Failed to update game");
+      setLoading(false);
     }
   };
 
   const handleCancel = () => {
+    if (loading) {
+      return; // Prevent canceling while loading
+    }
     const data = initialData || {};
     setZhName(data.zhName || "");
     setEnName(data.enName || "");
@@ -115,14 +148,17 @@ const ManagerEditModal = ({
     setCategory(data.category || "All");
     setTags(data.tags || ["Hot", "New"]);
     setVisibility(data.visibility || ["EN", "ZH", "DE"]);
-    setFileList(data.coverImage ? [{ url: data.coverImage }] : []);
+    setFileList(data.coverImage ? [{ url: data.coverImage, status: 'done', name: 'cover-image' }] : []);
+    setLoading(false);
     if (onCancel) {
       onCancel();
     }
   };
 
   const handleUploadChange = ({ fileList: newFileList }) => {
-    setFileList(newFileList);
+    // Limit to single file
+    const limitedFileList = newFileList.slice(-1);
+    setFileList(limitedFileList);
   };
 
   const beforeUpload = () => {
@@ -142,12 +178,47 @@ const ManagerEditModal = ({
     { value: "PT", label: "PT" },
   ];
 
-  const coverImageUrl =
-    fileList.length > 0 && fileList[0].originFileObj
-      ? URL.createObjectURL(fileList[0].originFileObj)
-      : fileList.length > 0 && fileList[0].url
-      ? fileList[0].url
-      : "/cat.jpg"; // Default image
+  // State to store preview URL
+  const [previewUrl, setPreviewUrl] = useState("/cat.jpg");
+
+  // Update preview URL when fileList or initialData changes
+  useEffect(() => {
+    if (fileList.length > 0) {
+      const file = fileList[0];
+      // If it's a new file (has originFileObj), create object URL for preview
+      if (file.originFileObj) {
+        const objectUrl = URL.createObjectURL(file.originFileObj);
+        setPreviewUrl(objectUrl);
+        // Cleanup function
+        return () => {
+          URL.revokeObjectURL(objectUrl);
+        };
+      }
+      // If it has a URL (existing image), use getImageURL to get full URL
+      else if (file.url) {
+        // Don't use getImageURL for data URLs or full URLs
+        if (file.url.startsWith('data:') || file.url.startsWith('http://') || file.url.startsWith('https://')) {
+          setPreviewUrl(file.url);
+        } else {
+          setPreviewUrl(getImageURL(file.url) || file.url);
+        }
+      }
+    } else {
+      // Default image - check if we have coverImage from initialData
+      if (initialData?.coverImage) {
+        const imgUrl = initialData.coverImage;
+        if (imgUrl.startsWith('data:') || imgUrl.startsWith('http://') || imgUrl.startsWith('https://')) {
+          setPreviewUrl(imgUrl);
+        } else {
+          setPreviewUrl(getImageURL(imgUrl) || imgUrl);
+        }
+      } else {
+        setPreviewUrl("/cat.jpg");
+      }
+    }
+  }, [fileList, initialData]);
+
+  const coverImageUrl = previewUrl;
 
   return (
     <Modal
@@ -273,10 +344,20 @@ const ManagerEditModal = ({
         {/* Buttons */}
         <div className="form-item-row form-item-buttons">
           <div className="modal-buttons">
-            <Button className="ok-button" type="primary" onClick={handleOk}>
+            <Button 
+              className="ok-button" 
+              type="primary" 
+              onClick={handleOk}
+              loading={loading}
+              disabled={loading}
+            >
               ok
             </Button>
-            <Button className="cancel-button" onClick={handleCancel}>
+            <Button 
+              className="cancel-button" 
+              onClick={handleCancel}
+              disabled={loading}
+            >
               cancel
             </Button>
           </div>

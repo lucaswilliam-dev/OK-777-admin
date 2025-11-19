@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Button,
   Pagination,
@@ -19,24 +19,179 @@ import "./style.css";
 const { RangePicker } = DatePicker;
 
 const GameProducts = () => {
-  const { state, setGameManagerCurrentPage, fetchGamesInManager } = useAppContext();
+  const {
+    state,
+    setGameManagerCurrentPage,
+    fetchGamesInManager,
+    fetchDropdownData,
+  } = useAppContext();
 
   // Get data from global context (all backend data is processed here)
   const { dataSource, loading, error, pagination } = state.gameManager;
   const { currentPage, pageSize } = pagination;
+  const { dropdowns } = state;
+
+  // Filter states
+  const [gameName, setGameName] = useState("");
+  const [category, setCategory] = useState("All");
+  const [provider, setProvider] = useState("All");
+  const [tags, setTags] = useState(["Hot", "New"]);
+  const [dateRange, setDateRange] = useState(null);
+  const [visibility, setVisibility] = useState(["EN", "ZH"]);
+  const hasFetchedRef = useRef(false);
+  const prevFiltersRef = useRef({
+    category: undefined,
+    provider: undefined,
+    startDate: null,
+    endDate: null,
+  });
+  const [currentSearchFilters, setCurrentSearchFilters] = useState({
+    search: undefined,
+    category: undefined,
+    provider: undefined,
+    startDate: undefined,
+    endDate: undefined,
+  });
+
+  const getDateRangeISO = useCallback((range) => {
+    if (!Array.isArray(range) || range.length < 2) {
+      return { startDate: undefined, endDate: undefined };
+    }
+    const normalizeValue = (value, toEndOfDay = false) => {
+      if (!value) return undefined;
+      if (
+        typeof value.startOf === "function" &&
+        typeof value.endOf === "function"
+      ) {
+        const normalized = toEndOfDay ? value.endOf("day") : value.startOf("day");
+        return normalized.toISOString();
+      }
+      const date = value instanceof Date ? new Date(value) : new Date(value);
+      if (Number.isNaN(date.getTime())) return undefined;
+      if (toEndOfDay) {
+        date.setHours(23, 59, 59, 999);
+      } else {
+        date.setHours(0, 0, 0, 0);
+      }
+      return date.toISOString();
+    };
+
+    return {
+      startDate: normalizeValue(range[0], false),
+      endDate: normalizeValue(range[1], true),
+    };
+  }, []);
+
+  const normalizeFilterValue = useCallback((value) => {
+    if (!value || value === "All") {
+      return undefined;
+    }
+    const trimmedValue = value.toString().trim();
+    return trimmedValue.length ? trimmedValue : undefined;
+  }, []);
 
   // Fetch games in manager only if data is empty
   // This prevents unnecessary re-fetching when navigating back to the page
   useEffect(() => {
-    // Only fetch if no data exists and we're not currently loading
-    if (dataSource.length === 0 && !loading) {
+    if (!hasFetchedRef.current && dataSource.length === 0 && !loading) {
       const loadGames = async () => {
-        await fetchGamesInManager(currentPage, pageSize);
+        const result = await fetchGamesInManager(currentPage, pageSize);
+        if (!result.success) {
+          message.error(result.error || "Failed to load games in manager.");
+        }
+        hasFetchedRef.current = true;
+        prevFiltersRef.current = {
+          category: normalizeFilterValue(category),
+          provider: normalizeFilterValue(provider),
+          startDate: null,
+          endDate: null,
+        };
       };
       loadGames();
+    } else if (!hasFetchedRef.current && dataSource.length > 0) {
+      hasFetchedRef.current = true;
+      prevFiltersRef.current = {
+        category: normalizeFilterValue(category),
+        provider: normalizeFilterValue(provider),
+        startDate: null,
+        endDate: null,
+      };
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run once on mount - data persistence is handled by context state
+  }, [normalizeFilterValue]);
+
+  const applyFilters = useCallback(
+    async (resetPage = true) => {
+      const trimmedGameName = gameName.trim();
+      const { startDate: startDateIso, endDate: endDateIso } = getDateRangeISO(dateRange);
+
+      const filters = {
+        search: trimmedGameName || undefined,
+        category: normalizeFilterValue(category),
+        provider: normalizeFilterValue(provider),
+        startDate: startDateIso,
+        endDate: endDateIso,
+      };
+
+      setCurrentSearchFilters(filters);
+
+      const targetPage = resetPage ? 1 : currentPage;
+
+      const result = await fetchGamesInManager(
+        targetPage,
+        pageSize,
+        filters.search,
+        filters.category,
+        filters.provider,
+        undefined,
+        filters.startDate,
+        filters.endDate
+      );
+
+      if (!result.success) {
+        message.error(result.error || "Failed to filter games in manager.");
+      }
+    },
+    [
+      gameName,
+      category,
+      provider,
+      dateRange,
+      currentPage,
+      pageSize,
+      fetchGamesInManager,
+      getDateRangeISO,
+      normalizeFilterValue,
+    ]
+  );
+
+  useEffect(() => {
+    const { startDate: startDateIso, endDate: endDateIso } = getDateRangeISO(dateRange);
+    const nextFiltersSnapshot = {
+      category: normalizeFilterValue(category),
+      provider: normalizeFilterValue(provider),
+      startDate: startDateIso || null,
+      endDate: endDateIso || null,
+    };
+
+    if (!hasFetchedRef.current) {
+      prevFiltersRef.current = nextFiltersSnapshot;
+      return;
+    }
+
+    const hasChanged =
+      prevFiltersRef.current.category !== nextFiltersSnapshot.category ||
+      prevFiltersRef.current.provider !== nextFiltersSnapshot.provider ||
+      prevFiltersRef.current.startDate !== nextFiltersSnapshot.startDate ||
+      prevFiltersRef.current.endDate !== nextFiltersSnapshot.endDate;
+
+    prevFiltersRef.current = nextFiltersSnapshot;
+
+    if (hasChanged) {
+      applyFilters(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [category, provider, dateRange, getDateRangeISO, applyFilters, normalizeFilterValue]);
 
   // Server-side pagination - dataSource already contains paginated results
   const paginatedDataSource = dataSource;
@@ -50,18 +205,7 @@ const GameProducts = () => {
   
   // GameManager now only shows games that were added from GameStore
   // No need to fetch from backend - games are managed via state
-
-  // Filter states
-  const [gameName, setGameName] = useState("");
-  const [category, setCategory] = useState("All");
-  const [provider, setProvider] = useState("All");
-  const [tags, setTags] = useState(["Hot", "New"]);
-  const [dateRange, setDateRange] = useState(null);
-  const [visibility, setVisibility] = useState(["EN", "ZH"]);
-
-  // Get dropdown data from context cache
-  const { fetchDropdownData, state: appState } = useAppContext();
-  const { dropdowns } = appState;
+  
   const [categoryOptions, setCategoryOptions] = useState([
     { value: "All", label: "All" },
   ]);
@@ -130,22 +274,26 @@ const GameProducts = () => {
     { value: "FR", label: "FR" },
   ];
 
-  const handleSearch = () => {
-    console.log("Search with filters:", {
-      gameName,
-      category,
-      provider,
-      tags,
-      dateRange,
-      visibility,
-    });
-    // Add your search logic here
+  const handleSearch = async () => {
+    await applyFilters(true);
   };
 
   const handlePageChange = async (page) => {
-    // Fetch games for the new page
     setGameManagerCurrentPage(page);
-    await fetchGamesInManager(page, pageSize);
+    const filters = currentSearchFilters;
+    const result = await fetchGamesInManager(
+      page,
+      pageSize,
+      filters.search,
+      filters.category,
+      filters.provider,
+      undefined,
+      filters.startDate,
+      filters.endDate
+    );
+    if (!result.success) {
+      message.error(result.error || "Failed to load games in manager.");
+    }
   };
 
   const handleDeleteOk = () => {
@@ -159,17 +307,102 @@ const GameProducts = () => {
     setIsDeleteModalOpen(false);
   };
 
-  const handleOk = (data) => {
-    // Handle form submission here
-    console.log("Form data:", data);
-    console.log("ZH Name:", data.zhName);
-    console.log("EN Name:", data.enName);
-    console.log("Provider:", data.provider);
-    console.log("Category:", data.category);
-    console.log("Tags:", data.tags);
-    console.log("Visibility:", data.visibility);
-    setIsModalOpen(false);
-    setEditingProduct(null);
+  const handleOk = async (data) => {
+    if (!editingProduct?.gameId) {
+      message.error("Game ID not found. Cannot update game.");
+      return;
+    }
+
+    try {
+      // Convert image file to base64 if a new file was uploaded
+      let imageUrl = null;
+      const originalImageUrl = editingProduct.coverImage;
+      let hasNewImage = false;
+      
+      // Check if a new file was uploaded
+      if (data.fileList && data.fileList.length > 0 && data.fileList[0].originFileObj) {
+        const file = data.fileList[0].originFileObj;
+        hasNewImage = true;
+        imageUrl = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const result = reader.result;
+            resolve(result);
+          };
+          reader.onerror = (error) => {
+            console.error("Error reading file:", error);
+            reject(new Error("Failed to read image file"));
+          };
+          reader.readAsDataURL(file);
+        });
+      } else if (data.coverImage && data.coverImage !== originalImageUrl) {
+        // Image URL was changed (but not a new file upload)
+        imageUrl = data.coverImage;
+        hasNewImage = true;
+      }
+
+      // Build langName object from zhName and enName
+      const langName = {};
+      if (data.zhName) {
+        langName.zh = data.zhName;
+        langName.ZH = data.zhName; // Also set uppercase variant
+      }
+      if (data.enName) {
+        langName.en = data.enName;
+        langName.EN = data.enName; // Also set uppercase variant
+      }
+
+      // Prepare update data
+      const updateData = {
+        extra_langName: langName,
+      };
+
+      // Only include provider if it's not "All" and has changed
+      if (data.provider && data.provider !== "All") {
+        updateData.extra_provider = data.provider;
+      }
+
+      // Only include category if it's not "All" and has changed
+      if (data.category && data.category !== "All") {
+        updateData.extra_gameType = data.category;
+      }
+
+      // Include extra_imageUrl if a new image was uploaded or changed
+      // Only update extra_imageUrl, NOT the base imageUrl field
+      if (hasNewImage && imageUrl) {
+        updateData.extra_imageUrl = imageUrl;
+      }
+
+      // Call API to update game
+      const response = await apiService.updateGame(editingProduct.gameId, updateData);
+
+      if (response.success) {
+        message.success("Game updated successfully!");
+        setIsModalOpen(false);
+        setEditingProduct(null);
+        
+        // Refresh the game list to show updated data
+        const filters = currentSearchFilters;
+        const result = await fetchGamesInManager(
+          currentPage,
+          pageSize,
+          filters.search,
+          filters.category,
+          filters.provider,
+          undefined,
+          filters.startDate,
+          filters.endDate
+        );
+        if (!result.success) {
+          message.warning("Game updated but failed to refresh the list.");
+        }
+      } else {
+        message.error(response.error || "Failed to update game");
+      }
+    } catch (error) {
+      console.error("Error updating game:", error);
+      message.error(error.message || "Failed to update game. Please try again.");
+    }
   };
 
   const handleCancel = () => {
@@ -178,18 +411,39 @@ const GameProducts = () => {
   };
 
   const handleEditClick = (product) => {
-    // Use provider name and category name from the product data
-    const providerName = product?.provider || product?.fullData?.provider || "All";
-    const categoryName = product?.category || product?.fullData?.category || product?.gameType || "All";
+    // Use extra_provider and extra_gameType for display values (from game table)
+    // These should match the dropdown values from Product and Category tables
+    const providerName = product?.extra_provider || product?.fullData?.extra_provider || product?.provider || product?.fullData?.provider || "All";
+    const categoryName = product?.extra_gameType || product?.fullData?.extra_gameType || product?.gameType || product?.fullData?.game_type || "All";
+    
+    // Extract langName from fullData if available
+    const langName = product?.fullData?.extra_langName || product?.fullData?.langName;
+    let zhName = product?.cnName || "";
+    let enName = product?.enName || "";
+    
+    // Parse langName if it's a JSON object/string
+    if (langName) {
+      try {
+        const parsed = typeof langName === 'string' ? JSON.parse(langName) : langName;
+        zhName = parsed.zh || parsed.ZH || parsed['zh-CN'] || zhName;
+        enName = parsed.en || parsed.EN || parsed['en-US'] || enName;
+      } catch (e) {
+        // If parsing fails, use existing values
+      }
+    }
+    
+    // Get the image URL - prefer extra_imageUrl, fallback to image_url
+    const imageUrl = product?.fullData?.extra_imageUrl || product?.image || "/cat.jpg";
     
     setEditingProduct({
-      zhName: product?.cnName || product?.gameName || "",
-      enName: product?.enName || product?.gameName || "",
-      provider: providerName, // Use provider name instead of productCode
-      category: categoryName, // Use category name instead of gameType
+      gameId: product?.gameId || product?.fullData?.id,
+      zhName: zhName || product?.gameName || "",
+      enName: enName || product?.gameName || "",
+      provider: providerName, // Use extra_provider from game table
+      category: categoryName, // Use extra_gameType from game table
       tags: ["Hot", "New"], // TODO: Get from product data if available
       visibility: ["EN", "ZH", "DE"], // TODO: Get from product data if available
-      coverImage: product?.image || "/cat.jpg",
+      coverImage: imageUrl,
       gameCode: product?.gameCode,
       fullData: product?.fullData,
     });
@@ -246,6 +500,7 @@ const GameProducts = () => {
               placeholder="Please input GameName"
               value={gameName}
               onChange={(e) => setGameName(e.target.value)}
+              onPressEnter={handleSearch}
               className="filter-input"
             />
           </div>
@@ -407,6 +662,7 @@ const GameProducts = () => {
         onOk={handleOk}
         onCancel={handleCancel}
         initialData={editingProduct}
+        key={editingProduct?.gameId} // Force re-render when editing different game
       />
       <Modal
         title={null}

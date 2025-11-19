@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Button, Modal } from "antd";
 import { PlayCircleOutlined, EditOutlined } from "@ant-design/icons";
+import { getImageURL } from "../../../../services/api";
 import "../GameProducts/style.css";
 
 const Product = ({
@@ -41,10 +42,13 @@ const Product = ({
     });
   };
 
+  // Get the properly formatted image URL
+  const imageUrl = image ? getImageURL(image) : "/cat.jpg";
+
   return (
     <div className="product">
       <div className="product-image-container">
-        <img src={image} alt="" className="product-image" />
+        <img src={imageUrl} alt="" className="product-image" />
         <div className="product-overlay">
           <Button
             type="primary"

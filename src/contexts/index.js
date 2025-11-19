@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from "react";
-import apiService from "../services/api";
+import apiService, { getImageURL } from "../services/api";
 
 // Create the App Context
 const AppContext = createContext(null);
@@ -174,6 +174,14 @@ export const AppProvider = ({ children }) => {
   const [state, setState] = useState(initialState);
   // Use ref to track current state for synchronous access in callbacks
   const stateRef = useRef(state);
+  const gameManagerFiltersRef = useRef({
+    search: undefined,
+    categoryId: undefined,
+    providerId: undefined,
+    status: undefined,
+    startDate: undefined,
+    endDate: undefined,
+  });
   
   // Keep ref in sync with state
   useEffect(() => {
@@ -526,30 +534,152 @@ export const AppProvider = ({ children }) => {
   }, []);
 
   // Game Provider actions
-  const updateGameProviderItem = useCallback((key, updates) => {
-    setState((prev) => ({
-      ...prev,
-      gameProvider: {
-        ...prev.gameProvider,
-        dataSource: prev.gameProvider.dataSource.map((item) =>
-          item.key === key ? { ...item, ...updates } : item
-        ),
-      },
-    }));
+  const updateGameProviderItem = useCallback(async (key, updates) => {
+    try {
+      const item = stateRef.current.gameProvider.dataSource.find((item) => item.key === key);
+      if (!item || !item.id) {
+        throw new Error('Product not found');
+      }
+
+      // Prepare product data for API
+      // Use new image if provided, otherwise keep existing cover
+      const imageToUse = updates.image !== undefined ? updates.image : (item.cover || null);
+      
+      const productData = {
+        name: updates.name || item.name || '',
+        provider: updates.provider || item.provider || '',
+        currency: updates.currency || item.currency || 'USD',
+        status: updates.status || item.status || 'active',
+        providerId: updates.providerId || item.providerId || 0,
+        code: updates.code || item.code || 0,
+        gameType: updates.gameType || item.gameType || '',
+        title: updates.title || item.title || updates.name || item.name || '',
+        enabled: updates.enabled !== undefined ? updates.enabled : (item.state !== undefined ? item.state : true),
+        image: imageToUse,
+      };
+
+      // Call API to update product
+      const response = await apiService.updateProduct(item.id, productData);
+      
+      if (response.success && response.data) {
+        // Transform updated product to match table format
+        const updatedProduct = response.data;
+        const transformedItem = {
+          key: updatedProduct.id.toString(),
+          id: updatedProduct.id,
+          name: updatedProduct.provider || updatedProduct.name || `Product ${updatedProduct.code}`,
+          cover: updatedProduct.image || "/cat.jpg",
+          sort: item.sort || 0,
+          state: updatedProduct.enabled !== undefined ? updatedProduct.enabled : true,
+          createTime: updatedProduct.updatedAt 
+            ? new Date(updatedProduct.updatedAt).toLocaleString('en-US', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false,
+              }).replace(',', '')
+            : item.createTime,
+          code: updatedProduct.code,
+          provider: updatedProduct.provider,
+          currency: updatedProduct.currency,
+          status: updatedProduct.status,
+          gameType: updatedProduct.gameType,
+          title: updatedProduct.title,
+        };
+
+        // Update local state with API response
+        setState((prev) => ({
+          ...prev,
+          gameProvider: {
+            ...prev.gameProvider,
+            dataSource: prev.gameProvider.dataSource.map((item) =>
+              item.key === key ? transformedItem : item
+            ),
+          },
+        }));
+        return { success: true };
+      } else {
+        throw new Error(response.error || 'Failed to update product');
+      }
+    } catch (error) {
+      console.error('Error updating game provider:', error);
+      return { success: false, error: error.message || 'Failed to update product' };
+    }
   }, []);
 
-  const addGameProviderItem = useCallback((newItem) => {
-    setState((prev) => ({
-      ...prev,
-      gameProvider: {
-        ...prev.gameProvider,
-        dataSource: [...prev.gameProvider.dataSource, newItem],
-        pagination: {
-          ...prev.gameProvider.pagination,
-          totalItems: prev.gameProvider.pagination.totalItems + 1,
-        },
-      },
-    }));
+  const addGameProviderItem = useCallback(async (newItem) => {
+    try {
+      // Prepare product data for API
+      // Generate a unique code if not provided (use max from current dataSource + 1)
+      // Note: In a real scenario, you might want to fetch all products to get the true max
+      const currentCodes = stateRef.current.gameProvider.dataSource.map(p => p.code || 0);
+      const maxCode = currentCodes.length > 0 ? Math.max(...currentCodes, 0) : 0;
+      const productData = {
+        name: newItem.name || '',
+        provider: newItem.provider || newItem.name || '',
+        currency: newItem.currency || 'USD',
+        status: newItem.status || 'active',
+        providerId: newItem.providerId || 0,
+        code: newItem.code || (maxCode + 1),
+        gameType: newItem.gameType || '',
+        title: newItem.title || newItem.name || '',
+        enabled: newItem.enabled !== undefined ? newItem.enabled : (newItem.state !== undefined ? newItem.state : true),
+        image: newItem.image || null,
+      };
+
+      // Call API to create product
+      const response = await apiService.createProduct(productData);
+      
+      if (response.success && response.data) {
+        // Transform created product to match table format
+        const createdProduct = response.data;
+        const transformedItem = {
+          key: createdProduct.id.toString(),
+          id: createdProduct.id,
+          name: createdProduct.provider || createdProduct.name || `Product ${createdProduct.code}`,
+          cover: createdProduct.image || "/cat.jpg",
+          sort: stateRef.current.gameProvider.dataSource.length + 1,
+          state: createdProduct.enabled !== undefined ? createdProduct.enabled : true,
+          createTime: createdProduct.createdAt 
+            ? new Date(createdProduct.createdAt).toLocaleString('en-US', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: false,
+              }).replace(',', '')
+            : new Date().toLocaleString(),
+          code: createdProduct.code,
+          provider: createdProduct.provider,
+          currency: createdProduct.currency,
+          status: createdProduct.status,
+          gameType: createdProduct.gameType,
+          title: createdProduct.title,
+        };
+
+        // Update local state with API response
+        setState((prev) => ({
+          ...prev,
+          gameProvider: {
+            ...prev.gameProvider,
+            dataSource: [...prev.gameProvider.dataSource, transformedItem],
+            pagination: {
+              ...prev.gameProvider.pagination,
+              totalItems: prev.gameProvider.pagination.totalItems + 1,
+            },
+          },
+        }));
+        return { success: true };
+      } else {
+        throw new Error(response.error || 'Failed to create product');
+      }
+    } catch (error) {
+      console.error('Error adding game provider:', error);
+      return { success: false, error: error.message || 'Failed to create product' };
+    }
   }, []);
 
   const setGameProviderCurrentPage = useCallback((currentPage) => {
@@ -621,31 +751,58 @@ export const AppProvider = ({ children }) => {
     }));
   }, []);
 
-  const confirmDeleteGameProviderItem = useCallback(() => {
-    setState((prev) => {
-      const itemToDelete = prev.gameProvider.modals.itemToDelete;
-      if (itemToDelete) {
-        return {
-          ...prev,
-          gameProvider: {
-            ...prev.gameProvider,
-            dataSource: prev.gameProvider.dataSource.filter(
-              (item) => item.key !== itemToDelete.key
-            ),
-            pagination: {
-              ...prev.gameProvider.pagination,
-              totalItems: prev.gameProvider.pagination.totalItems - 1,
-            },
-            modals: {
-              ...prev.gameProvider.modals,
-              isDeleteModalOpen: false,
-              itemToDelete: null,
-            },
-          },
-        };
+  const confirmDeleteGameProviderItem = useCallback(async () => {
+    try {
+      const itemToDelete = stateRef.current.gameProvider.modals.itemToDelete;
+      if (!itemToDelete || !itemToDelete.id) {
+        throw new Error('Product not found');
       }
-      return prev;
-    });
+
+      // Call API to delete product
+      const response = await apiService.deleteProduct(itemToDelete.id);
+      
+      if (response.success) {
+        // Update local state
+        setState((prev) => {
+          return {
+            ...prev,
+            gameProvider: {
+              ...prev.gameProvider,
+              dataSource: prev.gameProvider.dataSource.filter(
+                (item) => item.key !== itemToDelete.key
+              ),
+              pagination: {
+                ...prev.gameProvider.pagination,
+                totalItems: prev.gameProvider.pagination.totalItems - 1,
+              },
+              modals: {
+                ...prev.gameProvider.modals,
+                isDeleteModalOpen: false,
+                itemToDelete: null,
+              },
+            },
+          };
+        });
+        return { success: true };
+      } else {
+        throw new Error(response.error || 'Failed to delete product');
+      }
+    } catch (error) {
+      console.error('Error deleting game provider:', error);
+      // Close modal even on error
+      setState((prev) => ({
+        ...prev,
+        gameProvider: {
+          ...prev.gameProvider,
+          modals: {
+            ...prev.gameProvider.modals,
+            isDeleteModalOpen: false,
+            itemToDelete: null,
+          },
+        },
+      }));
+      return { success: false, error: error.message || 'Failed to delete product' };
+    }
   }, []);
 
   // Fetch game providers (products) from database
@@ -1268,23 +1425,25 @@ export const AppProvider = ({ children }) => {
    */
   const mapGameData = useCallback((game) => {
     // Extract language names from lang_name (could be object or string)
-    let cnName = game.game_name;
-    let enName = game.game_name;
+    const rawGameName = game.extra_gameName || game.game_name;
+    const rawLangName = game.extra_langName || game.lang_name;
+    let cnName = rawGameName;
+    let enName = rawGameName;
     
-    if (game.lang_name) {
-      if (typeof game.lang_name === 'object') {
-        cnName = game.lang_name.zh || game.lang_name.ZH || game.lang_name['zh-CN'] || game.game_name;
-        enName = game.lang_name.en || game.lang_name.EN || game.lang_name['en-US'] || game.game_name;
-      } else if (typeof game.lang_name === 'string') {
+    if (rawLangName) {
+      if (typeof rawLangName === 'object') {
+        cnName = rawLangName.zh || rawLangName.ZH || rawLangName['zh-CN'] || rawGameName;
+        enName = rawLangName.en || rawLangName.EN || rawLangName['en-US'] || rawGameName;
+      } else if (typeof rawLangName === 'string') {
         // If it's a string, try to parse it
         try {
-          const langObj = JSON.parse(game.lang_name);
-          cnName = langObj.zh || langObj.ZH || langObj['zh-CN'] || game.game_name;
-          enName = langObj.en || langObj.EN || langObj['en-US'] || game.game_name;
+          const langObj = JSON.parse(rawLangName);
+          cnName = langObj.zh || langObj.ZH || langObj['zh-CN'] || rawGameName;
+          enName = langObj.en || langObj.EN || langObj['en-US'] || rawGameName;
         } catch (e) {
-          // If parsing fails, use game_name for both
-          cnName = game.game_name;
-          enName = game.game_name;
+          // If parsing fails, use rawGameName for both
+          cnName = rawGameName;
+          enName = rawGameName;
         }
       }
     }
@@ -1294,15 +1453,17 @@ export const AppProvider = ({ children }) => {
       id: game.id || game.product_id, // Use database game ID if available
       gameId: game.id, // Store database game ID separately
       gameCode: game.game_code,
-      gameName: game.game_name,
-      image: game.image_url || "/cat.jpg", // Use image_url from backend response
+      gameName: rawGameName,
+      image: game.extra_imageUrl || game.image_url || "/cat.jpg", // Use extra_imageUrl first
       cnName: cnName,
       enName: enName,
       gameType: game.game_type,
       productCode: game.product_code,
       status: game.status,
-      provider: game.provider || null, // Include provider from backend
-      category: game.category || game.game_type || null, // Include category name from backend
+      provider: game.extra_provider || game.provider || null, // Prefer extra_provider for display/filtering
+      category: game.extra_gameType || game.category || game.game_type || null, // Prefer extra_gameType for display/filtering
+      extra_provider: game.extra_provider || game.provider || null, // Include extra_provider for modal display
+      extra_gameType: game.extra_gameType || game.game_type || null, // Include extra_gameType for modal display
       // Store full game data for edit modal
       fullData: game,
     };
@@ -1317,7 +1478,7 @@ export const AppProvider = ({ children }) => {
    * @param {string} providerId - Provider ID filter (optional)
    * @param {string} status - Status filter (optional)
    */
-  const fetchGamesInManager = useCallback(async (page, limit, search, categoryId, providerId, status) => {
+  const fetchGamesInManager = useCallback(async (page, limit, search, categoryId, providerId, status, startDate, endDate) => {
     const currentPage = page !== undefined && page !== null ? page : stateRef.current.gameManager.pagination.currentPage;
     const pageSize = limit !== undefined && limit !== null ? limit : stateRef.current.gameManager.pagination.pageSize;
 
@@ -1332,7 +1493,16 @@ export const AppProvider = ({ children }) => {
     }));
 
     try {
-      const response = await apiService.getGamesInManager(currentPage, pageSize, search, categoryId, providerId, status);
+      const response = await apiService.getGamesInManager(
+        currentPage,
+        pageSize,
+        search,
+        categoryId,
+        providerId,
+        status,
+        startDate,
+        endDate
+      );
       
       // Process backend data
       if (response.success && response.data) {
@@ -1361,6 +1531,15 @@ export const AppProvider = ({ children }) => {
             },
           },
         }));
+
+        gameManagerFiltersRef.current = {
+          search,
+          categoryId,
+          providerId,
+          status,
+          startDate,
+          endDate,
+        };
 
         return { success: true, data: mappedGames };
       } else {
@@ -1615,7 +1794,17 @@ export const AppProvider = ({ children }) => {
       // Refresh the game manager list from the API to get accurate data including correct images
       const currentPage = stateRef.current.gameManager.pagination.currentPage;
       const pageSize = stateRef.current.gameManager.pagination.pageSize;
-      await fetchGamesInManager(currentPage, pageSize);
+      const filters = gameManagerFiltersRef.current;
+      await fetchGamesInManager(
+        currentPage,
+        pageSize,
+        filters.search,
+        filters.categoryId,
+        filters.providerId,
+        filters.status,
+        filters.startDate,
+        filters.endDate
+      );
     } catch (error) {
       console.error('Failed to add game to manager:', error);
       
@@ -1690,7 +1879,17 @@ export const AppProvider = ({ children }) => {
       // Refresh the game manager list from the API to get accurate data
       const currentPage = stateRef.current.gameManager.pagination.currentPage;
       const pageSize = stateRef.current.gameManager.pagination.pageSize;
-      await fetchGamesInManager(currentPage, pageSize);
+      const filters = gameManagerFiltersRef.current;
+      await fetchGamesInManager(
+        currentPage,
+        pageSize,
+        filters.search,
+        filters.categoryId,
+        filters.providerId,
+        filters.status,
+        filters.startDate,
+        filters.endDate
+      );
     } catch (error) {
       console.error('Failed to remove game from manager:', error);
       

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Button, Modal, Input, Upload, Select } from "antd";
 import { CameraOutlined } from "@ant-design/icons";
+import { getImageURL } from "../../services/api";
 import "../MainContent/GameCategory/Table/style.css";
 
 const AddOrEditModal = ({
@@ -9,31 +10,61 @@ const AddOrEditModal = ({
   onCancel,
   initialName = "",
   initialVisibility = ["EN", "ZH"],
+  initialCover = null,
 }) => {
   const [fileList, setFileList] = useState([]);
   const [nameValue, setNameValue] = useState(initialName);
   const [visibilityValue, setVisibilityValue] = useState(initialVisibility);
+  const [coverImage, setCoverImage] = useState(initialCover);
 
   useEffect(() => {
     if (open) {
       setNameValue(initialName);
       setVisibilityValue(initialVisibility);
+      setCoverImage(initialCover);
       setFileList([]);
     }
-  }, [open, initialName, initialVisibility]);
+  }, [open, initialName, initialVisibility, initialCover]);
 
-  const handleOk = () => {
-    // Handle form submission here
-    console.log("Name:", nameValue);
-    console.log("Visibility:", visibilityValue);
-    if (onOk) {
-      onOk({ name: nameValue, visibility: visibilityValue, fileList });
+  const handleOk = async () => {
+    let imageBase64 = null;
+    
+    // If a new file was uploaded, convert it to base64
+    if (fileList.length > 0 && fileList[0].originFileObj) {
+      try {
+        imageBase64 = await convertFileToBase64(fileList[0].originFileObj);
+      } catch (error) {
+        console.error('Error converting image to base64:', error);
+        return;
+      }
     }
+    
+    if (onOk) {
+      onOk({ 
+        name: nameValue, 
+        visibility: visibilityValue, 
+        fileList,
+        image: imageBase64,
+        cover: coverImage
+      });
+    }
+  };
+
+  const convertFileToBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        resolve(reader.result);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
   };
 
   const handleCancel = () => {
     setNameValue(initialName);
     setVisibilityValue(initialVisibility);
+    setCoverImage(initialCover);
     setFileList([]);
     if (onCancel) {
       onCancel();
@@ -42,11 +73,41 @@ const AddOrEditModal = ({
 
   const handleUploadChange = ({ fileList: newFileList }) => {
     setFileList(newFileList);
+    // If a new file is selected, update the preview
+    if (newFileList.length > 0 && newFileList[0].originFileObj) {
+      const imageUrl = URL.createObjectURL(newFileList[0].originFileObj);
+      setCoverImage(imageUrl);
+    } else if (newFileList.length === 0) {
+      // If file is removed, revert to initial cover
+      setCoverImage(initialCover);
+    }
   };
 
   const beforeUpload = () => {
     return false; // Prevent auto upload
   };
+
+  // Determine which image to show
+  const getDisplayImage = () => {
+    // If a new file was uploaded, show it
+    if (fileList.length > 0 && fileList[0].originFileObj) {
+      return URL.createObjectURL(fileList[0].originFileObj);
+    }
+    
+    // If there's an existing cover image, convert it to full URL if needed
+    if (coverImage && coverImage !== null && coverImage !== "") {
+      // For local public assets like /cat.jpg, don't use getImageURL
+      if (coverImage === "/cat.jpg" || (coverImage.startsWith("/") && !coverImage.startsWith("/uploads/"))) {
+        return coverImage;
+      }
+      return getImageURL(coverImage);
+    }
+    
+    // Default image (local public asset) - always show when no image is set
+    return "/cat.jpg";
+  };
+
+  const displayImage = getDisplayImage();
 
   return (
     <Modal
@@ -82,30 +143,22 @@ const AddOrEditModal = ({
               className="cover-upload"
               showUploadList={false}
             >
-              {fileList.length === 0 && (
-                <div className="cover-preview">
-                  <img
-                    src="https://images.unsplash.com/photo-1518791841217-8f162f1e1131?w=200&h=150&fit=crop"
-                    alt="preview"
-                    className="cover-image"
-                  />
-                  <div className="camera-icon-overlay">
-                    <CameraOutlined />
-                  </div>
+              <div className="cover-preview">
+                <img
+                  src={displayImage}
+                  alt="preview"
+                  className="cover-image"
+                  onError={(e) => {
+                    // If image fails to load, show default
+                    if (e.target.src !== "/cat.jpg") {
+                      e.target.src = "/cat.jpg";
+                    }
+                  }}
+                />
+                <div className="camera-icon-overlay">
+                  <CameraOutlined />
                 </div>
-              )}
-              {fileList.length > 0 && (
-                <div className="cover-preview">
-                  <img
-                    src={URL.createObjectURL(fileList[0].originFileObj)}
-                    alt="preview"
-                    className="cover-image"
-                  />
-                  <div className="camera-icon-overlay">
-                    <CameraOutlined />
-                  </div>
-                </div>
-              )}
+              </div>
             </Upload>
           </div>
         </div>
