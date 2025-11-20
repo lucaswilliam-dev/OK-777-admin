@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo, useCallback, memo } from "react";
 import { Menu } from "antd";
 import { BarChartOutlined, DownOutlined } from "@ant-design/icons";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -24,14 +24,16 @@ const routeToKeyMap = {
   "/": "game-category", // Fallback for root path
 };
 
-const SideBar = () => {
+const SideBar = memo(() => {
   const {
     state,
     setSelectedKey,
     toggleMenuExpanded,
   } = useAppContext();
 
-  const { selectedKey, isMenuExpanded } = state.sidebar;
+  // Only extract what we need from state to prevent unnecessary re-renders
+  const selectedKey = state.sidebar.selectedKey;
+  const isMenuExpanded = state.sidebar.isMenuExpanded;
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -43,7 +45,8 @@ const SideBar = () => {
     }
   }, [location.pathname, selectedKey, setSelectedKey]);
 
-  const menuItems = [
+  // Memoize menuItems to prevent recreation on every render
+  const menuItems = useMemo(() => [
     {
       key: "game-category",
       label: "Game Category",
@@ -64,19 +67,19 @@ const SideBar = () => {
       key: "game-tags",
       label: "Game Tags",
     },
-  ];
+  ], []);
 
-  const toggleMenu = () => {
+  const toggleMenu = useCallback(() => {
     toggleMenuExpanded();
-  };
+  }, [toggleMenuExpanded]);
 
-  const handleMenuClick = ({ key }) => {
+  const handleMenuClick = useCallback(({ key }) => {
     setSelectedKey(key);
     const route = keyToRouteMap[key];
     if (route) {
       navigate(route);
     }
-  };
+  }, [setSelectedKey, navigate]);
 
   return (
     <div className="sidebar-container">
@@ -100,6 +103,8 @@ const SideBar = () => {
       )}
     </div>
   );
-};
+});
+
+SideBar.displayName = 'SideBar';
 
 export default SideBar;

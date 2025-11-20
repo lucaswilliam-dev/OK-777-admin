@@ -11,6 +11,7 @@ import {
 import AddOrEditModal from "../../../Modal/AddOrEditModal";
 import DeleteModal from "../../../Modal/DeleteModal";
 import { useAppContext } from "../../../../contexts";
+import { getImageURL } from "../../../../services/api";
 import "./style.css";
 
 const Table = () => {
@@ -65,11 +66,39 @@ const Table = () => {
       key: "icon",
       width: 100,
       align: "center",
-      render: () => (
-        <div className="category-icon">
-          <div className="icon-circle"></div>
-        </div>
-      ),
+      render: (icon, record) => {
+        // If there's an uploaded icon, show it; otherwise show default CSS icon
+        if (icon && icon !== "") {
+          const iconUrl = icon.startsWith("/") && !icon.startsWith("/uploads/") 
+            ? icon 
+            : getImageURL(icon);
+          return (
+            <div className="category-icon">
+              <img 
+                src={iconUrl} 
+                alt="category icon" 
+                className="category-icon-image"
+                onError={(e) => {
+                  // If image fails to load, hide image and show default CSS icon
+                  e.target.style.display = "none";
+                  const parent = e.target.parentElement;
+                  if (parent && !parent.querySelector(".icon-circle")) {
+                    const defaultIcon = document.createElement("div");
+                    defaultIcon.className = "icon-circle";
+                    parent.appendChild(defaultIcon);
+                  }
+                }}
+              />
+            </div>
+          );
+        }
+        // Default CSS icon
+        return (
+          <div className="category-icon">
+            <div className="icon-circle"></div>
+          </div>
+        );
+      },
     },
     {
       title: "State",
@@ -149,6 +178,7 @@ const Table = () => {
         // Update existing item
         const result = await updateGameCategoryItem(editingItem.key, {
           name: data.name,
+          icon: data.icon || null,
           visibility: data.visibility,
         });
         if (result.success) {
@@ -161,7 +191,7 @@ const Table = () => {
         // Add new item
         const newItem = {
           name: data.name,
-          icon: "",
+          icon: data.icon || null,
           state: true,
           visibility: data.visibility,
         };
@@ -265,6 +295,7 @@ const Table = () => {
         onCancel={handleCancel}
         initialName={editingItem?.name || ""}
         initialVisibility={editingItem?.visibility || ["EN", "ZH"]}
+        initialIcon={editingItem?.icon || null}
       />
       <DeleteModal
         open={isDeleteModalOpen}

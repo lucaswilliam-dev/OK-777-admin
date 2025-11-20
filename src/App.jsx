@@ -21,8 +21,8 @@ const MemoizedGameManager = memo(GameManager);
 const MemoizedGameStore = memo(GameStore);
 const MemoizedGameTag = memo(GameTag);
 
-// Protected Route Component
-const ProtectedRoute = ({ children, onLogout }) => {
+// Protected Route Component - Memoized to prevent unnecessary re-renders
+const ProtectedRoute = memo(({ children, onLogout }) => {
   const token = localStorage.getItem('token');
   
   useEffect(() => {
@@ -36,7 +36,9 @@ const ProtectedRoute = ({ children, onLogout }) => {
   }
   
   return children;
-};
+});
+
+ProtectedRoute.displayName = 'ProtectedRoute';
 
 // Main App Content
 const AppContent = () => {

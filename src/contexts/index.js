@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from "react";
+import React, { createContext, useContext, useState, useCallback, useRef, useEffect, useMemo } from "react";
 import apiService, { getImageURL } from "../services/api";
 
 // Create the App Context
@@ -234,7 +234,7 @@ export const AppProvider = ({ children }) => {
       }
 
       // Call API to update category
-      const response = await apiService.updateGameCategory(item.id, updates.name);
+      const response = await apiService.updateGameCategory(item.id, updates.name, updates.icon);
       
       if (response.success && response.data) {
         // Update local state with API response
@@ -247,6 +247,7 @@ export const AppProvider = ({ children }) => {
                 ? {
                     ...item,
                     name: response.data.name,
+                    icon: response.data.icon || "",
                     createTime: response.data.updatedAt
                       ? new Date(response.data.updatedAt).toLocaleString('en-US', {
                           year: 'numeric',
@@ -282,7 +283,7 @@ export const AppProvider = ({ children }) => {
   const addGameCategoryItem = useCallback(async (newItem) => {
     try {
       // Call API to create category
-      const response = await apiService.createGameCategory(newItem.name);
+      const response = await apiService.createGameCategory(newItem.name, newItem.icon);
       
       if (response.success && response.data) {
         // Transform API response to match table format
@@ -290,7 +291,7 @@ export const AppProvider = ({ children }) => {
           key: response.data.id.toString(),
           id: response.data.id,
           name: response.data.name,
-          icon: "",
+          icon: response.data.icon || "",
           state: true,
           createTime: response.data.createdAt
             ? new Date(response.data.createdAt).toLocaleString('en-US', {
@@ -496,7 +497,7 @@ export const AppProvider = ({ children }) => {
           key: category.id.toString(),
           id: category.id,
           name: category.name,
-          icon: "",
+          icon: category.icon || "",
           state: true, // Default state, can be updated if needed
           createTime: category.createdAt 
             ? new Date(category.createdAt).toLocaleString('en-US', {
@@ -2059,7 +2060,9 @@ export const AppProvider = ({ children }) => {
     }));
   }, []);
 
-  const value = {
+  // Memoize context value to prevent unnecessary re-renders
+  // Only recreate when state or callbacks change (callbacks are already memoized with useCallback)
+  const value = useMemo(() => ({
     // State
     state,
 
@@ -2139,7 +2142,70 @@ export const AppProvider = ({ children }) => {
     fetchDropdownData,
     refreshProvidersInCache,
     fetchGameFilters,
-  };
+  }), [
+    state,
+    setSelectedKey,
+    toggleMenuExpanded,
+    updateGameCategoryDataSource,
+    updateGameCategoryItem,
+    addGameCategoryItem,
+    deleteGameCategoryItem,
+    setGameCategoryPagination,
+    setGameCategoryCurrentPage,
+    openGameCategoryAddEditModal,
+    closeGameCategoryAddEditModal,
+    openGameCategoryDeleteModal,
+    closeGameCategoryDeleteModal,
+    confirmDeleteGameCategoryItem,
+    fetchGameCategories,
+    updateGameProviderItem,
+    addGameProviderItem,
+    setGameProviderCurrentPage,
+    openGameProviderAddEditModal,
+    closeGameProviderAddEditModal,
+    openGameProviderDeleteModal,
+    closeGameProviderDeleteModal,
+    confirmDeleteGameProviderItem,
+    fetchGameProviders,
+    fetchGamesForStore,
+    updateGameStoreDataSource,
+    updateGameStoreItem,
+    addGameStoreItem,
+    deleteGameStoreItem,
+    setGameStorePagination,
+    setGameStoreCurrentPage,
+    openGameStoreModal,
+    closeGameStoreModal,
+    updateGameTagsDataSource,
+    updateGameTagsItem,
+    addGameTagsItem,
+    deleteGameTagsItem,
+    setGameTagsPagination,
+    setGameTagsCurrentPage,
+    openGameTagsAddEditModal,
+    closeGameTagsAddEditModal,
+    openGameTagsDeleteModal,
+    closeGameTagsDeleteModal,
+    confirmDeleteGameTagsItem,
+    setGameManagerPagination,
+    setGameManagerCurrentPage,
+    fetchGames,
+    fetchGamesInManager,
+    updateGameManagerDataSource,
+    updateGameManagerItem,
+    addGameManagerItem,
+    deleteGameManagerItem,
+    addGameToManager,
+    removeGameFromManager,
+    isGameInManager,
+    updateModuleDataSource,
+    setModulePagination,
+    openModuleModal,
+    closeModuleModal,
+    fetchDropdownData,
+    refreshProvidersInCache,
+    fetchGameFilters,
+  ]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };

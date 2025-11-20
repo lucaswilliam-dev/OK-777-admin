@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo, useCallback, memo } from "react";
 import {
   SearchOutlined,
   AlipayOutlined,
@@ -11,9 +11,9 @@ import { Button, Dropdown, message } from "antd";
 import apiService from "../../services/api";
 import "./style.css";
 
-const Header = ({ onLogout }) => {
-  // Get user info from localStorage
-  const getUserInfo = () => {
+const Header = memo(({ onLogout }) => {
+  // Memoize user info to avoid re-parsing on every render
+  const user = useMemo(() => {
     try {
       const userStr = localStorage.getItem('user');
       if (userStr) {
@@ -23,11 +23,9 @@ const Header = ({ onLogout }) => {
       console.error('Error parsing user data:', e);
     }
     return null;
-  };
+  }, []); // Only parse once on mount
 
-  const user = getUserInfo();
-
-  const handleLogout = () => {
+  const handleLogout = useCallback(() => {
     try {
       // Use API service logout to clear all authentication data
       apiService.logout();
@@ -45,16 +43,16 @@ const Header = ({ onLogout }) => {
       console.error('Logout error:', error);
       message.error('Error during logout');
     }
-  };
+  }, [onLogout]);
 
-  const getUserInitial = () => {
+  const getUserInitial = useMemo(() => {
     if (user?.email) {
       return user.email.charAt(0).toUpperCase();
     }
     return 'A';
-  };
+  }, [user?.email]);
 
-  const userMenuItems = [
+  const userMenuItems = useMemo(() => [
     {
       key: 'profile',
       label: (
@@ -78,7 +76,7 @@ const Header = ({ onLogout }) => {
         </span>
       ),
     },
-  ];
+  ], [user?.email, user?.role, handleLogout]);
 
   return (
     <>
@@ -103,13 +101,15 @@ const Header = ({ onLogout }) => {
               style={{ cursor: 'pointer' }}
               title={user?.email || 'Admin'}
             >
-              {getUserInitial()}
+              {getUserInitial}
             </Button>
           </Dropdown>
         </div>
       </header>
     </>
   );
-};
+});
+
+Header.displayName = 'Header';
 
 export default Header;

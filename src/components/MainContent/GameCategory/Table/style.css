@@ -58,6 +58,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+}
+
+.category-icon-image {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
 }
 
 .icon-circle {
@@ -69,6 +78,12 @@
   align-items: center;
   justify-content: center;
   position: relative;
+}
+
+.icon-circle-fallback {
+  position: absolute;
+  top: 0;
+  left: 0;
 }
 
 .icon-circle::before {
@@ -100,6 +115,7 @@
   margin-left: -2px;
   transform: rotate(-20deg);
 }
+
 
 .header-left {
   display: flex;

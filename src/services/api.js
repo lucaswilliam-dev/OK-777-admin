@@ -1,5 +1,5 @@
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://ok777-render.onrender.com/api/v1';
-// const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://api-test.ok777.io:8092/api/v1';
+// const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://ok777-render.onrender.com/api/v1';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://api-test.ok777.io:8092/api/v1';
 // const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:4000/api/v1';
 
 /**
@@ -288,14 +288,44 @@ class ApiService {
   }
 
   /**
+   * Upload an image file
+   * @param {File} file - Image file to upload
+   * @returns {Promise} Upload response with path and URL
+   */
+  async uploadImage(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    const headers = {};
+    if (token) {
+      headers['Authorization'] = token;
+    }
+
+    const response = await fetch(`${API_BASE_URL}/admin/uploads/image`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  }
+
+  /**
    * Create a new game category
    * @param {string} name - Category name
+   * @param {string} icon - Icon path (optional)
    * @returns {Promise} Created category
    */
-  async createGameCategory(name) {
+  async createGameCategory(name, icon) {
     return this.request('/admin/game-categories/add', {
       method: 'POST',
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ name, icon }),
     });
   }
 
@@ -303,12 +333,13 @@ class ApiService {
    * Update a game category
    * @param {number} id - Category ID
    * @param {string} name - Category name
+   * @param {string} icon - Icon path (optional)
    * @returns {Promise} Updated category
    */
-  async updateGameCategory(id, name) {
+  async updateGameCategory(id, name, icon) {
     return this.request(`/admin/game-categories/${id}/update`, {
       method: 'PUT',
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ name, icon }),
     });
   }
 

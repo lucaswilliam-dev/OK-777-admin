@@ -11,32 +11,44 @@ const AddOrEditModal = ({
   initialName = "",
   initialVisibility = ["EN", "ZH"],
   initialCover = null,
+  initialIcon = null,
 }) => {
   const [fileList, setFileList] = useState([]);
   const [nameValue, setNameValue] = useState(initialName);
   const [visibilityValue, setVisibilityValue] = useState(initialVisibility);
-  const [coverImage, setCoverImage] = useState(initialCover);
+  const [coverImage, setCoverImage] = useState(initialCover || initialIcon);
 
   useEffect(() => {
     if (open) {
       setNameValue(initialName);
       setVisibilityValue(initialVisibility);
-      setCoverImage(initialCover);
+      setCoverImage(initialCover || initialIcon);
       setFileList([]);
     }
-  }, [open, initialName, initialVisibility, initialCover]);
+  }, [open, initialName, initialVisibility, initialCover, initialIcon]);
 
   const handleOk = async () => {
-    let imageBase64 = null;
+    let imagePath = null;
     
-    // If a new file was uploaded, convert it to base64
+    // If a new file was uploaded, upload it first
     if (fileList.length > 0 && fileList[0].originFileObj) {
       try {
-        imageBase64 = await convertFileToBase64(fileList[0].originFileObj);
+        // Import apiService dynamically to avoid circular dependencies
+        const { default: apiService } = await import("../../services/api");
+        const uploadResult = await apiService.uploadImage(fileList[0].originFileObj);
+        if (uploadResult.success && uploadResult.data) {
+          imagePath = uploadResult.data.path;
+        } else {
+          console.error('Upload failed:', uploadResult);
+          return;
+        }
       } catch (error) {
-        console.error('Error converting image to base64:', error);
+        console.error('Error uploading image:', error);
         return;
       }
+    } else if (coverImage && coverImage !== "/cat.jpg") {
+      // If no new file but there's an existing image, use it
+      imagePath = coverImage;
     }
     
     if (onOk) {
@@ -44,8 +56,9 @@ const AddOrEditModal = ({
         name: nameValue, 
         visibility: visibilityValue, 
         fileList,
-        image: imageBase64,
-        cover: coverImage
+        image: imagePath,
+        icon: imagePath,
+        cover: imagePath
       });
     }
   };
@@ -64,7 +77,7 @@ const AddOrEditModal = ({
   const handleCancel = () => {
     setNameValue(initialName);
     setVisibilityValue(initialVisibility);
-    setCoverImage(initialCover);
+    setCoverImage(initialCover || initialIcon);
     setFileList([]);
     if (onCancel) {
       onCancel();
@@ -78,8 +91,8 @@ const AddOrEditModal = ({
       const imageUrl = URL.createObjectURL(newFileList[0].originFileObj);
       setCoverImage(imageUrl);
     } else if (newFileList.length === 0) {
-      // If file is removed, revert to initial cover
-      setCoverImage(initialCover);
+      // If file is removed, revert to initial
+      setCoverImage(initialCover || initialIcon);
     }
   };
 
@@ -94,7 +107,7 @@ const AddOrEditModal = ({
       return URL.createObjectURL(fileList[0].originFileObj);
     }
     
-    // If there's an existing cover image, convert it to full URL if needed
+    // If there's an existing image, convert it to full URL if needed
     if (coverImage && coverImage !== null && coverImage !== "") {
       // For local public assets like /cat.jpg, don't use getImageURL
       if (coverImage === "/cat.jpg" || (coverImage.startsWith("/") && !coverImage.startsWith("/uploads/"))) {

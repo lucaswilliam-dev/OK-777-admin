@@ -63,11 +63,15 @@ const Table = () => {
   // Use ref to track if initial fetch has been done
   const hasFetchedRef = useRef(false);
 
-  // Fetch games from backend when component mounts
+  // Fetch games and filters from backend when component mounts
   useEffect(() => {
     if (!hasFetchedRef.current && dataSource.length === 0 && !loading) {
       hasFetchedRef.current = true;
-      const loadGames = async () => {
+      const loadData = async () => {
+        // Load filters first so dropdowns are populated
+        await fetchGameFiltersFromContext();
+        
+        // Then load games
         const result = await fetchGamesForStore(
           undefined, // productCode
           currentPage, // page
@@ -84,7 +88,7 @@ const Table = () => {
           );
         }
       };
-      loadGames();
+      loadData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -585,7 +589,11 @@ const Table = () => {
   const { fetchGameFilters, state: appState } = useAppContext();
   const { gameFilters } = appState;
 
+  // Load filters on mount if not already loaded
+  // This ensures dropdowns are populated when the page loads
   useEffect(() => {
+    // Always try to load filters on mount if they're empty
+    // The fetchGameFilters function has caching, so it's safe to call multiple times
     if (
       gameFilters.providers.length === 0 ||
       gameFilters.categories.length === 0
