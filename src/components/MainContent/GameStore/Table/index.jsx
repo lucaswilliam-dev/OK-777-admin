@@ -28,6 +28,7 @@ const Table = () => {
     addGameToManager,
     removeGameFromManager,
     isGameInManager,
+    fetchGameFilters: fetchGameFiltersFromContext,
   } = useAppContext();
 
   const { dataSource, pagination, modals, loading, error, lastUpdated, lastPing } = state.gameStore;
@@ -546,63 +547,43 @@ const Table = () => {
   };
 
   // Get dropdown data from context cache
-  const { fetchDropdownData, state: appState } = useAppContext();
-  const { dropdowns } = appState;
-  const [categoryOptions, setCategoryOptions] = useState([
-    { value: "All", label: "All" },
-  ]);
-  const [providerOptions, setProviderOptions] = useState([
-    { value: "All", label: "All" },
-  ]);
+  const { fetchGameFilters, state: appState } = useAppContext();
+  const { gameFilters } = appState;
 
-  // Fetch categories and providers from cache (only if not already loaded)
   useEffect(() => {
-    const loadDropdownData = async () => {
-      // Use cached data if available
-      if (dropdowns.categories.length > 0 && dropdowns.providers.length > 0) {
-        const categoryOpts = [
-          { value: "All", label: "All" },
-          ...dropdowns.categories.map((cat) => ({
-            value: cat.name,
-            label: cat.name,
-          })),
-        ];
-        const providerOpts = [
-          { value: "All", label: "All" },
-          ...dropdowns.providers.map((prov) => ({
-            value: prov,
-            label: prov,
-          })),
-        ];
-        setCategoryOptions(categoryOpts);
-        setProviderOptions(providerOpts);
-      } else {
-        // Fetch if not cached
-        const result = await fetchDropdownData();
-        if (result.success) {
-          const categoryOpts = [
-            { value: "All", label: "All" },
-            ...result.categories.map((cat) => ({
-              value: cat.name,
-              label: cat.name,
-            })),
-          ];
-          const providerOpts = [
-            { value: "All", label: "All" },
-            ...result.providers.map((prov) => ({
-              value: prov,
-              label: prov,
-            })),
-          ];
-          setCategoryOptions(categoryOpts);
-          setProviderOptions(providerOpts);
-        }
-      }
-    };
+    if (
+      gameFilters.providers.length === 0 ||
+      gameFilters.categories.length === 0
+    ) {
+      fetchGameFiltersFromContext();
+    }
+  }, [
+    fetchGameFiltersFromContext,
+    gameFilters.providers.length,
+    gameFilters.categories.length,
+  ]);
 
-    loadDropdownData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run once on mount
+  const providerOptions = useMemo(
+    () => [
+      { value: "All", label: "All" },
+      ...gameFilters.providers.map((name) => ({
+        value: name,
+        label: name,
+      })),
+    ],
+    [gameFilters.providers]
+  );
+
+  const categoryOptions = useMemo(
+    () => [
+      { value: "All", label: "All" },
+      ...gameFilters.categories.map((name) => ({
+        value: name,
+        label: name,
+      })),
+    ],
+    [gameFilters.categories]
+  );
 
   return (
     <div className="table-container">
@@ -630,7 +611,7 @@ const Table = () => {
               onChange={handleProviderChange}
               className="filter-select filter-select1 filter-select-game-store"
               options={providerOptions}
-              loading={dropdowns.loading}
+              loading={gameFilters.loading}
               placeholder="Select Provider"
             />
           </div>
@@ -641,7 +622,7 @@ const Table = () => {
               onChange={handleCategoryChange}
               className="filter-select filter-select-game-store"
               options={categoryOptions}
-              loading={dropdowns.loading}
+              loading={gameFilters.loading}
               placeholder="Select Category"
             />
           </div>

@@ -280,6 +280,14 @@ class ApiService {
   }
 
   /**
+   * Get unique provider/category names derived from games
+   * @returns {Promise<{categories: string[], providers: string[]}>}
+   */
+  async getGameFilterOptions() {
+    return this.request('/admin/game-filter-options');
+  }
+
+  /**
    * Create a new game category
    * @param {string} name - Category name
    * @returns {Promise} Created category

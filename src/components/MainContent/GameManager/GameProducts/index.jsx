@@ -24,9 +24,9 @@ const GameProducts = () => {
     setGameManagerCurrentPage,
     fetchGamesInManager,
     fetchDropdownData,
+    updateGameManagerItem,
   } = useAppContext();
 
-  // Get data from global context (all backend data is processed here)
   const { dataSource, loading, error, pagination } = state.gameManager;
   const { currentPage, pageSize } = pagination;
   const { dropdowns } = state;
@@ -213,10 +213,8 @@ const GameProducts = () => {
     { value: "All", label: "All" },
   ]);
 
-  // Fetch categories and providers from cache (only if not already loaded)
   useEffect(() => {
     const loadDropdownData = async () => {
-      // Use cached data if available
       if (dropdowns.categories.length > 0 && dropdowns.providers.length > 0) {
         const categoryOpts = [
           { value: "All", label: "All" },
@@ -235,7 +233,6 @@ const GameProducts = () => {
         setCategoryOptions(categoryOpts);
         setProviderOptions(providerOpts);
       } else {
-        // Fetch if not cached
         const result = await fetchDropdownData();
         if (result.success) {
           const categoryOpts = [
@@ -260,7 +257,7 @@ const GameProducts = () => {
 
     loadDropdownData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run once on mount
+  }, []);
 
   const tagOptions = [
     { value: "Hot", label: "Hot" },
@@ -314,32 +311,6 @@ const GameProducts = () => {
     }
 
     try {
-      // Convert image file to base64 if a new file was uploaded
-      let imageUrl = null;
-      const originalImageUrl = editingProduct.coverImage;
-      let hasNewImage = false;
-      
-      // Check if a new file was uploaded
-      if (data.fileList && data.fileList.length > 0 && data.fileList[0].originFileObj) {
-        const file = data.fileList[0].originFileObj;
-        hasNewImage = true;
-        imageUrl = await new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => {
-            const result = reader.result;
-            resolve(result);
-          };
-          reader.onerror = (error) => {
-            console.error("Error reading file:", error);
-            reject(new Error("Failed to read image file"));
-          };
-          reader.readAsDataURL(file);
-        });
-      } else if (data.coverImage && data.coverImage !== originalImageUrl) {
-        // Image URL was changed (but not a new file upload)
-        imageUrl = data.coverImage;
-        hasNewImage = true;
-      }
 
       // Build langName object from zhName and enName
       const langName = {};
@@ -357,20 +328,16 @@ const GameProducts = () => {
         extra_langName: langName,
       };
 
-      // Only include provider if it's not "All" and has changed
-      if (data.provider && data.provider !== "All") {
-        updateData.extra_provider = data.provider;
+      if (data.provider !== undefined) {
+        updateData.extra_provider = data.provider || null;
       }
 
-      // Only include category if it's not "All" and has changed
-      if (data.category && data.category !== "All") {
-        updateData.extra_gameType = data.category;
+      if (data.category !== undefined) {
+        updateData.extra_gameType = data.category || null;
       }
 
-      // Include extra_imageUrl if a new image was uploaded or changed
-      // Only update extra_imageUrl, NOT the base imageUrl field
-      if (hasNewImage && imageUrl) {
-        updateData.extra_imageUrl = imageUrl;
+      if (data.uploadedImagePath) {
+        updateData.extra_imageUrl = data.uploadedImagePath;
       }
 
       // Call API to update game
@@ -379,23 +346,49 @@ const GameProducts = () => {
       if (response.success) {
         message.success("Game updated successfully!");
         setIsModalOpen(false);
+
+        const updatedGame = response.data || {};
+        const nextProvider =
+          updatedGame.extra_provider ??
+          updatedGame.provider ??
+          data.provider ??
+          editingProduct.provider ??
+          null;
+        const nextCategory =
+          updatedGame.extra_gameType ??
+          updatedGame.category ??
+          data.category ??
+          editingProduct.category ??
+          null;
+        const nextCnName = data.zhName || updatedGame.extra_langName?.zh || updatedGame.langName?.zh || editingProduct.cnName;
+        const nextEnName = data.enName || updatedGame.extra_langName?.en || updatedGame.langName?.en || editingProduct.enName;
+        const serverImage =
+          updatedGame.extra_imageUrl ??
+          updatedGame.imageUrl ??
+          updatedGame.image_url ??
+          data.uploadedImagePath ??
+          editingProduct.image;
+
+        const updatedFields = {
+          cnName: nextCnName,
+          enName: nextEnName,
+          provider: nextProvider,
+          category: nextCategory,
+          extra_provider: nextProvider,
+          extra_gameType: nextCategory,
+          image: serverImage,
+          fullData: {
+            ...(editingProduct.fullData || {}),
+            ...updatedGame,
+            extra_langName: updateData.extra_langName ?? updatedGame.extra_langName ?? editingProduct.fullData?.extra_langName,
+            extra_provider: nextProvider,
+            extra_gameType: nextCategory,
+            extra_imageUrl: serverImage,
+          },
+        };
+
+        updateGameManagerItem(editingProduct.key, updatedFields);
         setEditingProduct(null);
-        
-        // Refresh the game list to show updated data
-        const filters = currentSearchFilters;
-        const result = await fetchGamesInManager(
-          currentPage,
-          pageSize,
-          filters.search,
-          filters.category,
-          filters.provider,
-          undefined,
-          filters.startDate,
-          filters.endDate
-        );
-        if (!result.success) {
-          message.warning("Game updated but failed to refresh the list.");
-        }
       } else {
         message.error(response.error || "Failed to update game");
       }
@@ -436,6 +429,7 @@ const GameProducts = () => {
     const imageUrl = product?.fullData?.extra_imageUrl || product?.image || "/cat.jpg";
     
     setEditingProduct({
+      key: product?.key,
       gameId: product?.gameId || product?.fullData?.id,
       zhName: zhName || product?.gameName || "",
       enName: enName || product?.gameName || "",
@@ -511,7 +505,7 @@ const GameProducts = () => {
               onChange={setCategory}
               className="filter-select"
               options={categoryOptions}
-              loading={dropdowns.loading}
+            loading={dropdowns.loading}
             />
           </div>
           <div className="filter-item">
@@ -521,7 +515,7 @@ const GameProducts = () => {
               onChange={setProvider}
               className="filter-select filter-select1"
               options={providerOptions}
-              loading={dropdowns.loading}
+            loading={dropdowns.loading}
             />
           </div>
           <div className="filter-item">

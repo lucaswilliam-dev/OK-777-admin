@@ -1,78 +1,70 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Button, Modal, Input, Upload, Select, message } from "antd";
 import { CameraOutlined } from "@ant-design/icons";
 import { useAppContext } from "../../contexts";
-import { getImageURL } from "../../services/api";
+import { getImageURL, getServerBaseURL } from "../../services/api";
 import "./ManagerEditModal.css";
 
-const ManagerEditModal = ({
-  open,
-  onOk,
-  onCancel,
-  initialData = null,
-}) => {
+const ManagerEditModal = ({ open, onOk, onCancel, initialData = null }) => {
   const safeData = initialData || {};
   const { fetchDropdownData, state } = useAppContext();
   const { dropdowns } = state;
-  
+
   const [fileList, setFileList] = useState([]);
   const [zhName, setZhName] = useState(safeData.zhName || "");
   const [enName, setEnName] = useState(safeData.enName || "");
-  const [provider, setProvider] = useState(safeData.provider || "All");
-  const [category, setCategory] = useState(safeData.category || "All");
+  const [provider, setProvider] = useState(safeData.provider || undefined);
+  const [category, setCategory] = useState(safeData.category || undefined);
   const [tags, setTags] = useState(safeData.tags || ["Hot", "New"]);
   const [visibility, setVisibility] = useState(
     safeData.visibility || ["EN", "ZH", "DE"]
   );
   const [loading, setLoading] = useState(false);
-  
-  // State for dropdown options
-  const [providerOptions, setProviderOptions] = useState([
-    { value: "All", label: "All" },
-  ]);
-  const [categoryOptions, setCategoryOptions] = useState([
-    { value: "All", label: "All" },
-  ]);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadedImagePath, setUploadedImagePath] = useState(null);
 
-  // Load dropdown data from database
+  const [providerOptions, setProviderOptions] = useState([]);
+  const [categoryOptions, setCategoryOptions] = useState([]);
+
+  const uploadEndpoint = useMemo(
+    () => `${getServerBaseURL()}/api/v1/admin/uploads/image`,
+    []
+  );
+
+  const uploadHeaders = useMemo(() => {
+    const token =
+      localStorage.getItem("token") || sessionStorage.getItem("token");
+    return token
+      ? {
+          Authorization: token,
+        }
+      : {};
+  }, []);
+
   useEffect(() => {
     const loadDropdownData = async () => {
-      // Use cached data if available
       if (dropdowns.categories.length > 0 && dropdowns.providers.length > 0) {
-        const categoryOpts = [
-          { value: "All", label: "All" },
-          ...dropdowns.categories.map((cat) => ({
-            value: cat.name,
-            label: cat.name,
-          })),
-        ];
-        const providerOpts = [
-          { value: "All", label: "All" },
-          ...dropdowns.providers.map((prov) => ({
-            value: prov,
-            label: prov,
-          })),
-        ];
+        const categoryOpts = dropdowns.categories.map((cat) => ({
+          value: cat.name,
+          label: cat.name,
+        }));
+        const providerOpts = dropdowns.providers.map((prov) => ({
+          value: prov,
+          label: prov,
+        }));
         setCategoryOptions(categoryOpts);
         setProviderOptions(providerOpts);
       } else {
-        // Fetch if not cached
         const result = await fetchDropdownData();
         if (result.success) {
-          const categoryOpts = [
-            { value: "All", label: "All" },
-            ...result.categories.map((cat) => ({
-              value: cat.name,
-              label: cat.name,
-            })),
-          ];
-          const providerOpts = [
-            { value: "All", label: "All" },
-            ...result.providers.map((prov) => ({
-              value: prov,
-              label: prov,
-            })),
-          ];
+          const categoryOpts = result.categories.map((cat) => ({
+            value: cat.name,
+            label: cat.name,
+          }));
+          const providerOpts = result.providers.map((prov) => ({
+            value: prov,
+            label: prov,
+          }));
           setCategoryOptions(categoryOpts);
           setProviderOptions(providerOpts);
         }
@@ -87,28 +79,41 @@ const ManagerEditModal = ({
       const data = initialData || {};
       setZhName(data.zhName || "");
       setEnName(data.enName || "");
-      setProvider(data.provider || "All");
-      setCategory(data.category || "All");
+      setProvider(data.provider || undefined);
+      setCategory(data.category || undefined);
       setTags(data.tags || ["Hot", "New"]);
       setVisibility(data.visibility || ["EN", "ZH", "DE"]);
+      setUploadedImagePath(null);
       // Set fileList with existing image URL if available
       if (data.coverImage) {
-        setFileList([{ 
-          url: data.coverImage,
-          status: 'done',
-          name: 'cover-image'
-        }]);
+        setFileList([
+          {
+            uid: "-1",
+            url: data.coverImage.startsWith("http")
+              ? data.coverImage
+              : getImageURL(data.coverImage),
+            status: "done",
+            name: "cover-image",
+          },
+        ]);
       } else {
         setFileList([]);
       }
       setLoading(false);
+      setUploadingImage(false);
     } else {
       // Reset loading when modal closes
       setLoading(false);
+      setUploadingImage(false);
+      setUploadedImagePath(null);
     }
   }, [open, initialData]);
 
   const handleOk = async () => {
+    if (uploadingImage) {
+      message.warning("Please wait for the image upload to finish");
+      return;
+    }
     // Validate required fields
     if (!zhName.trim() && !enName.trim()) {
       message.warning("Please enter at least one name (ZH or EN)");
@@ -121,12 +126,15 @@ const ManagerEditModal = ({
         await onOk({
           zhName: zhName.trim(),
           enName: enName.trim(),
-          provider: provider === "All" ? undefined : provider,
-          category: category === "All" ? undefined : category,
+          provider: provider || undefined,
+          category: category || undefined,
           tags,
           visibility,
-          fileList, // Pass fileList so parent can check for originFileObj
-          coverImage: coverImageUrl, // Pass current cover image URL for comparison
+          coverImage: coverImageUrl,
+          uploadedImagePath,
+          uploadedImageUrl: uploadedImagePath
+            ? getImageURL(uploadedImagePath)
+            : undefined,
         });
         // Loading will be reset by parent component after successful update
       }
@@ -144,25 +152,84 @@ const ManagerEditModal = ({
     const data = initialData || {};
     setZhName(data.zhName || "");
     setEnName(data.enName || "");
-    setProvider(data.provider || "All");
-    setCategory(data.category || "All");
+    setProvider(data.provider || undefined);
+    setCategory(data.category || undefined);
     setTags(data.tags || ["Hot", "New"]);
     setVisibility(data.visibility || ["EN", "ZH", "DE"]);
-    setFileList(data.coverImage ? [{ url: data.coverImage, status: 'done', name: 'cover-image' }] : []);
+    setFileList(
+      data.coverImage
+        ? [{ url: data.coverImage, status: "done", name: "cover-image" }]
+        : []
+    );
     setLoading(false);
+    setUploadingImage(false);
+    setUploadedImagePath(null);
     if (onCancel) {
       onCancel();
     }
   };
 
-  const handleUploadChange = ({ fileList: newFileList }) => {
-    // Limit to single file
-    const limitedFileList = newFileList.slice(-1);
-    setFileList(limitedFileList);
+  const handleUploadChange = (info) => {
+    const { file } = info;
+    let newFileList = info.fileList.slice(-1);
+    newFileList = newFileList.map((item) => {
+      if (item.response?.data?.url) {
+        return {
+          ...item,
+          url: item.response.data.url,
+          status: item.status || "done",
+        };
+      }
+      return item;
+    });
+    setFileList(newFileList);
+
+    if (file.status === "uploading") {
+      setUploadingImage(true);
+      return;
+    }
+
+    if (file.status === "done") {
+      setUploadingImage(false);
+      const uploadPath = file.response?.data?.path;
+      const uploadUrl = file.response?.data?.url;
+      if (uploadPath) {
+        setUploadedImagePath(uploadPath);
+      }
+      if (uploadUrl) {
+        setPreviewUrl(uploadUrl);
+      }
+      message.success("Image uploaded successfully");
+    } else if (file.status === "removed") {
+      setUploadingImage(false);
+      setUploadedImagePath(null);
+      if (initialData?.coverImage) {
+        setPreviewUrl(
+          initialData.coverImage.startsWith("http")
+            ? initialData.coverImage
+            : getImageURL(initialData.coverImage)
+        );
+      } else {
+        setPreviewUrl("/cat.jpg");
+      }
+    } else if (file.status === "error") {
+      setUploadingImage(false);
+      message.error(file.error?.message || "Failed to upload image");
+    }
   };
 
-  const beforeUpload = () => {
-    return false; // Prevent auto upload
+  const beforeUpload = (file) => {
+    const isImage = file.type.startsWith("image/");
+    if (!isImage) {
+      message.error("Only image files are allowed");
+      return Upload.LIST_IGNORE;
+    }
+    const isLt5M = file.size / 1024 / 1024 < 5;
+    if (!isLt5M) {
+      message.error("Image must smaller than 5MB");
+      return Upload.LIST_IGNORE;
+    }
+    return true;
   };
 
   const tagOptions = [
@@ -197,7 +264,11 @@ const ManagerEditModal = ({
       // If it has a URL (existing image), use getImageURL to get full URL
       else if (file.url) {
         // Don't use getImageURL for data URLs or full URLs
-        if (file.url.startsWith('data:') || file.url.startsWith('http://') || file.url.startsWith('https://')) {
+        if (
+          file.url.startsWith("data:") ||
+          file.url.startsWith("http://") ||
+          file.url.startsWith("https://")
+        ) {
           setPreviewUrl(file.url);
         } else {
           setPreviewUrl(getImageURL(file.url) || file.url);
@@ -207,7 +278,11 @@ const ManagerEditModal = ({
       // Default image - check if we have coverImage from initialData
       if (initialData?.coverImage) {
         const imgUrl = initialData.coverImage;
-        if (imgUrl.startsWith('data:') || imgUrl.startsWith('http://') || imgUrl.startsWith('https://')) {
+        if (
+          imgUrl.startsWith("data:") ||
+          imgUrl.startsWith("http://") ||
+          imgUrl.startsWith("https://")
+        ) {
           setPreviewUrl(imgUrl);
         } else {
           setPreviewUrl(getImageURL(imgUrl) || imgUrl);
@@ -257,13 +332,18 @@ const ManagerEditModal = ({
         <div className="form-item-row form-item-cover">
           <label className="form-label">Cover</label>
           <div className="form-input-wrapper">
-            <Upload
+              <Upload
+                name="file"
+                action={uploadEndpoint}
               listType="picture-card"
               fileList={fileList}
               onChange={handleUploadChange}
               beforeUpload={beforeUpload}
               className="cover-upload"
+                headers={uploadHeaders}
               showUploadList={false}
+                accept="image/*"
+                withCredentials={false}
             >
               <div className="cover-preview">
                 <img
@@ -284,14 +364,15 @@ const ManagerEditModal = ({
           <label className="form-label">Provider</label>
           <Select
             className="form-select"
-            value={provider}
-            onChange={setProvider}
+            value={provider ?? undefined}
+            onChange={(value) => setProvider(value || undefined)}
             options={providerOptions}
             placeholder="Select provider"
             loading={dropdowns.loading}
             showSearch
+            allowClear
             filterOption={(input, option) =>
-              (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+              (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
             }
           />
         </div>
@@ -301,14 +382,15 @@ const ManagerEditModal = ({
           <label className="form-label">Category</label>
           <Select
             className="form-select"
-            value={category}
-            onChange={setCategory}
+            value={category ?? undefined}
+            onChange={(value) => setCategory(value || undefined)}
             options={categoryOptions}
             placeholder="Select category"
             loading={dropdowns.loading}
             showSearch
+            allowClear
             filterOption={(input, option) =>
-              (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+              (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
             }
           />
         </div>
@@ -344,19 +426,19 @@ const ManagerEditModal = ({
         {/* Buttons */}
         <div className="form-item-row form-item-buttons">
           <div className="modal-buttons">
-            <Button 
-              className="ok-button" 
-              type="primary" 
+            <Button
+              className="ok-button"
+              type="primary"
               onClick={handleOk}
               loading={loading}
-              disabled={loading}
+              disabled={loading || uploadingImage}
             >
               ok
             </Button>
-            <Button 
-              className="cancel-button" 
+            <Button
+              className="cancel-button"
               onClick={handleCancel}
-              disabled={loading}
+              disabled={loading || uploadingImage}
             >
               cancel
             </Button>
@@ -368,4 +450,3 @@ const ManagerEditModal = ({
 };
 
 export default ManagerEditModal;
-

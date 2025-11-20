@@ -167,6 +167,12 @@ const initialState = {
     loading: false,
     lastFetched: null,
   },
+  gameFilters: {
+    categories: [],
+    providers: [],
+    loading: false,
+    lastFetched: null,
+  },
 };
 
 // Context Provider Component
@@ -835,7 +841,6 @@ export const AppProvider = ({ children }) => {
     }));
 
     try {
-      // Fetch categories and providers in parallel
       const [categoriesResponse, providersResponse] = await Promise.all([
         apiService.getGameCategories(),
         apiService.getProviders(),
@@ -899,6 +904,72 @@ export const AppProvider = ({ children }) => {
       }));
     } catch (error) {
       console.error("Error refreshing providers in cache:", error);
+    }
+  }, []);
+
+  const fetchGameFilters = useCallback(async (forceRefresh = false) => {
+    const cache = stateRef.current.gameFilters;
+    const cacheAge = cache.lastFetched ? Date.now() - cache.lastFetched : Infinity;
+    const CACHE_DURATION = 5 * 60 * 1000;
+
+    if (
+      !forceRefresh &&
+      cache.providers.length > 0 &&
+      cache.categories.length > 0 &&
+      cacheAge < CACHE_DURATION
+    ) {
+      return {
+        success: true,
+        categories: cache.categories,
+        providers: cache.providers,
+      };
+    }
+
+    setState((prev) => ({
+      ...prev,
+      gameFilters: {
+        ...prev.gameFilters,
+        loading: true,
+      },
+    }));
+
+    try {
+      const response = await apiService.getGameFilterOptions();
+      const categories =
+        response.success && response.data && Array.isArray(response.data.categories)
+          ? response.data.categories.filter((name) => !!name && name.trim() !== "")
+          : [];
+      const providers =
+        response.success && response.data && Array.isArray(response.data.providers)
+          ? response.data.providers.filter((name) => !!name && name.trim() !== "")
+          : [];
+
+      setState((prev) => ({
+        ...prev,
+        gameFilters: {
+          categories,
+          providers,
+          loading: false,
+          lastFetched: Date.now(),
+        },
+      }));
+
+      return { success: true, categories, providers };
+    } catch (error) {
+      console.error("Error fetching game filters:", error);
+      setState((prev) => ({
+        ...prev,
+        gameFilters: {
+          ...prev.gameFilters,
+          loading: false,
+        },
+      }));
+      return {
+        success: false,
+        error: error.message || "Failed to fetch game filters",
+        categories: cache.categories,
+        providers: cache.providers,
+      };
     }
   }, []);
 
@@ -2067,6 +2138,7 @@ export const AppProvider = ({ children }) => {
     // Dropdown data cache
     fetchDropdownData,
     refreshProvidersInCache,
+    fetchGameFilters,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
