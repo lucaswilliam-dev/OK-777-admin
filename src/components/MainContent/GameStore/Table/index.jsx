@@ -501,10 +501,45 @@ const Table = () => {
   };
 
   // Move (One Click Remove) modal handlers
-  const handleMoveOk = () => {
-    console.log("One Click Remove confirmed");
-    closeGameStoreModal("isMoveModalOpen");
-    // Add your remove logic here
+  const handleMoveOk = async () => {
+    const offlineGames = tableData.filter((game) => {
+      if (!game) return false;
+      const pingValue =
+        typeof game.pingMs === "number" ? game.pingMs : Number(game.pingMs);
+      if (Number.isFinite(pingValue)) {
+        return pingValue <= 0;
+      }
+      return game.pingStatus === "offline" || pingValue === 0 || pingValue === null;
+    });
+
+    const offlineGameIds = offlineGames
+      .map((game) => game.id)
+      .filter((id) => Number.isInteger(id) && id > 0);
+
+    if (!offlineGameIds.length) {
+      message.info("There are no offline games to remove.");
+      closeGameStoreModal("isMoveModalOpen");
+      return;
+    }
+
+    const hideLoading = message.loading("Removing offline games...", 0);
+    try {
+      const response = await api.removeOfflineGames(offlineGameIds);
+      hideLoading();
+      if (response.success) {
+        const removedCount = response.removed ?? offlineGameIds.length;
+        message.success(`Removed ${removedCount} offline game(s).`);
+        await refetchCurrentGames();
+      } else {
+        message.error(response.error || "Failed to remove offline games.");
+      }
+    } catch (error) {
+      hideLoading();
+      console.error("One Click Remove error:", error);
+      message.error(error.message || "Failed to remove offline games.");
+    } finally {
+      closeGameStoreModal("isMoveModalOpen");
+    }
   };
 
   const handleMoveCancel = () => {

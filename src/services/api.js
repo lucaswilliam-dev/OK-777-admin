@@ -1,5 +1,5 @@
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://ok777-render.onrender.com/api/v1';
-// const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://api-test.ok777.io:8092/api/v1';
+// const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://ok777-render.onrender.com/api/v1';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://api-test.ok777.io:8092/api/v1';
 // const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:4000/api/v1';
 
 /**
@@ -467,6 +467,18 @@ class ApiService {
   async deleteProduct(id) {
     return this.request(`/admin/products/${id}`, {
       method: 'DELETE',
+    });
+  }
+
+  /**
+   * Remove offline games from Game Store
+   * @param {number[]} gameIds - IDs of games to verify and remove
+   * @returns {Promise} Removal result
+   */
+  async removeOfflineGames(gameIds) {
+    return this.request('/operators/remove-offline-games', {
+      method: 'POST',
+      body: JSON.stringify({ gameIds }),
     });
   }
 }
