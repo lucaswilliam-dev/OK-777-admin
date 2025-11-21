@@ -312,20 +312,48 @@ const GameProducts = () => {
 
     try {
 
-      // Build langName object from zhName and enName
-      const langName = {};
-      if (data.zhName) {
-        langName.zh = data.zhName;
-        langName.ZH = data.zhName; // Also set uppercase variant
+      // Build extra_langName object using language codes
+      // 0 = English, 2 = Simplify Chinese
+      // Preserve existing language codes and only update 0 and 2
+      const existingLangName = editingProduct?.fullData?.extra_langName || editingProduct?.fullData?.langName || {};
+      let parsedExisting = {};
+      
+      // Parse existing langName if it's a string
+      if (typeof existingLangName === 'string') {
+        try {
+          parsedExisting = JSON.parse(existingLangName);
+        } catch (e) {
+          // If parsing fails, try to extract from old format
+          parsedExisting = existingLangName;
+        }
+      } else if (existingLangName && typeof existingLangName === 'object') {
+        parsedExisting = { ...existingLangName };
       }
+      
+      // Create new langName object preserving all existing language codes
+      const langName = { ...parsedExisting };
+      
+      // Update language code 0 (English) if enName is provided
       if (data.enName) {
-        langName.en = data.enName;
-        langName.EN = data.enName; // Also set uppercase variant
+        langName['0'] = data.enName.trim();
       }
+      
+      // Update language code 2 (Simplify Chinese) if zhName is provided
+      if (data.zhName) {
+        langName['2'] = data.zhName.trim();
+      }
+
+      // Convert tags array to isHot and isNew boolean fields
+      // If "Hot" is in tags array, set isHot to true, otherwise false
+      // If "New" is in tags array, set isNew to true, otherwise false
+      const isHot = Array.isArray(data.tags) && data.tags.includes("Hot");
+      const isNew = Array.isArray(data.tags) && data.tags.includes("New");
 
       // Prepare update data
       const updateData = {
         extra_langName: langName,
+        isHot: isHot,
+        isNew: isNew,
       };
 
       if (data.provider !== undefined) {
@@ -338,6 +366,15 @@ const GameProducts = () => {
 
       if (data.uploadedImagePath) {
         updateData.extra_imageUrl = data.uploadedImagePath;
+      }
+
+      // Handle visibility field - convert array of language codes to JSON
+      if (data.visibility !== undefined && Array.isArray(data.visibility)) {
+        // Filter out invalid values and ensure all are numbers
+        const validVisibility = data.visibility
+          .map(code => typeof code === 'string' ? parseInt(code, 10) : code)
+          .filter(code => !isNaN(code) && code >= 0 && code <= 43);
+        updateData.visibility = validVisibility.length > 0 ? validVisibility : null;
       }
 
       // Call API to update game
@@ -360,8 +397,14 @@ const GameProducts = () => {
           data.category ??
           editingProduct.category ??
           null;
-        const nextCnName = data.zhName || updatedGame.extra_langName?.zh || updatedGame.langName?.zh || editingProduct.cnName;
-        const nextEnName = data.enName || updatedGame.extra_langName?.en || updatedGame.langName?.en || editingProduct.enName;
+        // Extract names using language codes: 0 = English, 2 = Simplify Chinese
+        const updatedLangName = updatedGame.extra_langName || updatedGame.langName || {};
+        const parsedUpdatedLangName = typeof updatedLangName === 'string' 
+          ? (() => { try { return JSON.parse(updatedLangName); } catch { return {}; } })()
+          : updatedLangName;
+        
+        const nextCnName = data.zhName || parsedUpdatedLangName['2'] || parsedUpdatedLangName[2] || editingProduct.cnName;
+        const nextEnName = data.enName || parsedUpdatedLangName['0'] || parsedUpdatedLangName[0] || editingProduct.enName;
         const serverImage =
           updatedGame.extra_imageUrl ??
           updatedGame.imageUrl ??
@@ -369,6 +412,24 @@ const GameProducts = () => {
           data.uploadedImagePath ??
           editingProduct.image;
 
+        // Extract updated isHot and isNew values from the response
+        const updatedIsHot = updatedGame.isHot ?? false;
+        const updatedIsNew = updatedGame.isNew ?? false;
+        
+        // Extract updated visibility from the response
+        let updatedVisibility = [];
+        const visibilityData = updatedGame.visibility;
+        if (visibilityData) {
+          try {
+            const parsed = typeof visibilityData === 'string' ? JSON.parse(visibilityData) : visibilityData;
+            if (Array.isArray(parsed)) {
+              updatedVisibility = parsed.map(code => typeof code === 'string' ? parseInt(code, 10) : code).filter(code => !isNaN(code));
+            }
+          } catch (e) {
+            // If parsing fails, use empty array
+          }
+        }
+        
         const updatedFields = {
           cnName: nextCnName,
           enName: nextEnName,
@@ -377,6 +438,9 @@ const GameProducts = () => {
           extra_provider: nextProvider,
           extra_gameType: nextCategory,
           image: serverImage,
+          isHot: updatedIsHot,
+          isNew: updatedIsNew,
+          visibility: updatedVisibility,
           fullData: {
             ...(editingProduct.fullData || {}),
             ...updatedGame,
@@ -384,6 +448,9 @@ const GameProducts = () => {
             extra_provider: nextProvider,
             extra_gameType: nextCategory,
             extra_imageUrl: serverImage,
+            isHot: updatedIsHot,
+            isNew: updatedIsNew,
+            visibility: updatedGame.visibility ?? editingProduct.fullData?.visibility,
           },
         };
 
@@ -410,6 +477,7 @@ const GameProducts = () => {
     const categoryName = product?.extra_gameType || product?.fullData?.extra_gameType || product?.gameType || product?.fullData?.game_type || "All";
     
     // Extract langName from fullData if available
+    // Use language codes: 0 = English, 2 = Simplify Chinese
     const langName = product?.fullData?.extra_langName || product?.fullData?.langName;
     let zhName = product?.cnName || "";
     let enName = product?.enName || "";
@@ -418,15 +486,43 @@ const GameProducts = () => {
     if (langName) {
       try {
         const parsed = typeof langName === 'string' ? JSON.parse(langName) : langName;
-        zhName = parsed.zh || parsed.ZH || parsed['zh-CN'] || zhName;
-        enName = parsed.en || parsed.EN || parsed['en-US'] || enName;
+        // Extract using language codes: 0 = English, 2 = Simplify Chinese
+        enName = parsed['0'] || parsed[0] || parsed.en || parsed.EN || parsed['en-US'] || enName;
+        zhName = parsed['2'] || parsed[2] || parsed.zh || parsed.ZH || parsed['zh-CN'] || zhName;
       } catch (e) {
         // If parsing fails, use existing values
+        // Silently fallback to existing values
       }
     }
     
     // Get the image URL - prefer extra_imageUrl, fallback to image_url
     const imageUrl = product?.fullData?.extra_imageUrl || product?.image || "/cat.jpg";
+    
+    // Extract tags from isHot and isNew fields
+    // If isHot is true, include "Hot" in tags array
+    // If isNew is true, include "New" in tags array
+    const tags = [];
+    const isHot = product?.fullData?.isHot || product?.isHot || false;
+    const isNew = product?.fullData?.isNew || product?.isNew || false;
+    if (isHot) tags.push("Hot");
+    if (isNew) tags.push("New");
+    
+    // Extract visibility from database (JSON field containing array of language codes)
+    let visibilityArray = [];
+    const visibilityData = product?.fullData?.visibility;
+    if (visibilityData) {
+      try {
+        // Parse if it's a string, otherwise use as-is
+        const parsed = typeof visibilityData === 'string' ? JSON.parse(visibilityData) : visibilityData;
+        // Ensure it's an array and convert to numbers if needed
+        if (Array.isArray(parsed)) {
+          visibilityArray = parsed.map(code => typeof code === 'string' ? parseInt(code, 10) : code).filter(code => !isNaN(code));
+        }
+      } catch (e) {
+        // If parsing fails, use empty array
+        console.warn("Failed to parse visibility data:", e);
+      }
+    }
     
     setEditingProduct({
       key: product?.key,
@@ -435,8 +531,8 @@ const GameProducts = () => {
       enName: enName || product?.gameName || "",
       provider: providerName, // Use extra_provider from game table
       category: categoryName, // Use extra_gameType from game table
-      tags: ["Hot", "New"], // TODO: Get from product data if available
-      visibility: ["EN", "ZH", "DE"], // TODO: Get from product data if available
+      tags: tags.length > 0 ? tags : [], // Get from isHot/isNew fields
+      visibility: visibilityArray, // Get from visibility field in database
       coverImage: imageUrl,
       gameCode: product?.gameCode,
       fullData: product?.fullData,
@@ -445,7 +541,6 @@ const GameProducts = () => {
   };
 
   const handleLaunchClick = async (product) => {
-    console.log(product);
     // Check if required game data is available
     if (!product.gameCode || !product.gameType || !product.productCode) {
       message.error("Missing game information. Cannot launch game.");
@@ -564,7 +659,8 @@ const GameProducts = () => {
       </div>
       <div className="line"></div>
       <div className="table-wrapper1">
-        {loading ? (
+        {loading && dataSource.length === 0 ? (
+          // Only show spinner if we have no data
           <div
             style={{
               display: "flex",

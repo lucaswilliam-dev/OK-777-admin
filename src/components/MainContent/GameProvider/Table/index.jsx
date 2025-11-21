@@ -231,7 +231,8 @@ const Table = () => {
 
       <div className="line"></div>
       <div className="table-wrapper">
-        {loading ? (
+        {loading && dataSource.length === 0 ? (
+          // Only show spinner if we have no data
           <div
             style={{
               display: "flex",

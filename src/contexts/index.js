@@ -1504,14 +1504,18 @@ export const AppProvider = ({ children }) => {
     
     if (rawLangName) {
       if (typeof rawLangName === 'object') {
-        cnName = rawLangName.zh || rawLangName.ZH || rawLangName['zh-CN'] || rawGameName;
-        enName = rawLangName.en || rawLangName.EN || rawLangName['en-US'] || rawGameName;
+        // Extract using language codes: 0 = English, 2 = Simplify Chinese
+        // Fallback to old format for backward compatibility
+        cnName = rawLangName['2'] || rawLangName[2] || rawLangName.zh || rawLangName.ZH || rawLangName['zh-CN'] || rawGameName;
+        enName = rawLangName['0'] || rawLangName[0] || rawLangName.en || rawLangName.EN || rawLangName['en-US'] || rawGameName;
       } else if (typeof rawLangName === 'string') {
         // If it's a string, try to parse it
         try {
           const langObj = JSON.parse(rawLangName);
-          cnName = langObj.zh || langObj.ZH || langObj['zh-CN'] || rawGameName;
-          enName = langObj.en || langObj.EN || langObj['en-US'] || rawGameName;
+          // Extract using language codes: 0 = English, 2 = Simplify Chinese
+          // Fallback to old format for backward compatibility
+          cnName = langObj['2'] || langObj[2] || langObj.zh || langObj.ZH || langObj['zh-CN'] || rawGameName;
+          enName = langObj['0'] || langObj[0] || langObj.en || langObj.EN || langObj['en-US'] || rawGameName;
         } catch (e) {
           // If parsing fails, use rawGameName for both
           cnName = rawGameName;

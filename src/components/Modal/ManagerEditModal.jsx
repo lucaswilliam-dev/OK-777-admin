@@ -16,8 +16,9 @@ const ManagerEditModal = ({ open, onOk, onCancel, initialData = null }) => {
   const [provider, setProvider] = useState(safeData.provider || undefined);
   const [category, setCategory] = useState(safeData.category || undefined);
   const [tags, setTags] = useState(safeData.tags || ["Hot", "New"]);
+  // Visibility is stored as array of language codes (numbers 0-43)
   const [visibility, setVisibility] = useState(
-    safeData.visibility || ["EN", "ZH", "DE"]
+    safeData.visibility || []
   );
   const [loading, setLoading] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -81,8 +82,10 @@ const ManagerEditModal = ({ open, onOk, onCancel, initialData = null }) => {
       setEnName(data.enName || "");
       setProvider(data.provider || undefined);
       setCategory(data.category || undefined);
-      setTags(data.tags || ["Hot", "New"]);
-      setVisibility(data.visibility || ["EN", "ZH", "DE"]);
+      // Tags should be an array - use empty array if not provided or not an array
+      setTags(Array.isArray(data.tags) ? data.tags : []);
+      // Visibility should be an array of language codes (numbers)
+      setVisibility(Array.isArray(data.visibility) ? data.visibility : []);
       setUploadedImagePath(null);
       // Set fileList with existing image URL if available
       if (data.coverImage) {
@@ -154,8 +157,10 @@ const ManagerEditModal = ({ open, onOk, onCancel, initialData = null }) => {
     setEnName(data.enName || "");
     setProvider(data.provider || undefined);
     setCategory(data.category || undefined);
-    setTags(data.tags || ["Hot", "New"]);
-    setVisibility(data.visibility || ["EN", "ZH", "DE"]);
+    // Tags should be an array - use empty array if not provided or not an array
+    setTags(Array.isArray(data.tags) ? data.tags : []);
+    // Visibility should be an array of language codes (numbers)
+    setVisibility(Array.isArray(data.visibility) ? data.visibility : []);
     setFileList(
       data.coverImage
         ? [{ url: data.coverImage, status: "done", name: "cover-image" }]
@@ -237,12 +242,52 @@ const ManagerEditModal = ({ open, onOk, onCancel, initialData = null }) => {
     { value: "New", label: "New" },
   ];
 
+  // Language options based on language codes (0-43)
   const visibilityOptions = [
-    { value: "EN", label: "EN" },
-    { value: "ZH", label: "ZH" },
-    { value: "ST", label: "ST" },
-    { value: "DE", label: "DE" },
-    { value: "PT", label: "PT" },
+    { value: 0, label: "English" },
+    { value: 1, label: "Traditional Chinese" },
+    { value: 2, label: "Simplify Chinese" },
+    { value: 3, label: "Thai" },
+    { value: 4, label: "Indonesia" },
+    { value: 5, label: "Japanese" },
+    { value: 6, label: "Korea" },
+    { value: 7, label: "Vietnamese" },
+    { value: 8, label: "Deutsch" },
+    { value: 9, label: "Espanol" },
+    { value: 10, label: "Francais" },
+    { value: 11, label: "Russia" },
+    { value: 12, label: "Portuguese" },
+    { value: 13, label: "Burmese" },
+    { value: 14, label: "Danish" },
+    { value: 15, label: "Finnish" },
+    { value: 16, label: "Italian" },
+    { value: 17, label: "Dutch" },
+    { value: 18, label: "Norwegian" },
+    { value: 19, label: "Polish" },
+    { value: 20, label: "Romanian" },
+    { value: 21, label: "Swedish" },
+    { value: 22, label: "Turkish" },
+    { value: 23, label: "Bulgarian" },
+    { value: 24, label: "Czech" },
+    { value: 25, label: "Greek" },
+    { value: 26, label: "Hungarian" },
+    { value: 27, label: "Brazilian Portugese" },
+    { value: 28, label: "Slovak" },
+    { value: 29, label: "Georgian" },
+    { value: 30, label: "Latvian" },
+    { value: 31, label: "Ukrainian" },
+    { value: 32, label: "Estonian" },
+    { value: 33, label: "Filipino" },
+    { value: 34, label: "Cambodian" },
+    { value: 35, label: "Lao" },
+    { value: 36, label: "Malay" },
+    { value: 37, label: "Cantonese" },
+    { value: 38, label: "Tamil" },
+    { value: 39, label: "Hindi" },
+    { value: 40, label: "European Spanish" },
+    { value: 41, label: "Azerbaijani" },
+    { value: 42, label: "Brunei Darussalam" },
+    { value: 43, label: "Croatian" },
   ];
 
   // State to store preview URL
@@ -420,6 +465,9 @@ const ManagerEditModal = ({ open, onOk, onCancel, initialData = null }) => {
             options={visibilityOptions}
             placeholder="Select visibility"
             showSearch
+            filterOption={(input, option) =>
+              (option?.label ?? "").toLowerCase().includes(input.toLowerCase())
+            }
           />
         </div>
 

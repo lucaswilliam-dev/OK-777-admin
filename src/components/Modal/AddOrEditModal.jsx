@@ -177,7 +177,7 @@ const AddOrEditModal = ({
         </div>
 
         {/* Visibility Field */}
-        <div className="form-item-row form-item-visibility">
+        {/* <div className="form-item-row form-item-visibility">
           <label className="form-label">Visibility</label>
           <Select
             mode="multiple"
@@ -194,7 +194,7 @@ const AddOrEditModal = ({
             placeholder="Select visibility"
             showSearch
           />
-        </div>
+        </div> */}
 
         {/* Buttons */}
         <div className="form-item-row form-item-buttons">

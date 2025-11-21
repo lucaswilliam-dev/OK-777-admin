@@ -20,9 +20,8 @@ const Login = ({ onLoginSuccess }) => {
         if (token) {
           message.success('Login successful!');
           // Small delay to ensure state updates
-          setTimeout(() => {
-            onLoginSuccess && onLoginSuccess(response.data);
-          }, 100);
+          // Remove unnecessary delay - call immediately
+          onLoginSuccess && onLoginSuccess(response.data);
         } else {
           message.error('Login failed: Token not stored');
           setLoading(false);

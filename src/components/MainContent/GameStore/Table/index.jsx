@@ -25,6 +25,7 @@ const Table = () => {
     openGameStoreModal,
     closeGameStoreModal,
     fetchGamesForStore,
+    setGameStoreCurrentPage,
     addGameToManager,
     removeGameFromManager,
     isGameInManager,
@@ -62,32 +63,65 @@ const Table = () => {
 
   // Use ref to track if initial fetch has been done
   const hasFetchedRef = useRef(false);
+  
+  // Local loading state to show spinner immediately on mount (only if no data exists)
+  const [isInitialLoading, setIsInitialLoading] = useState(() => {
+    // Only show loading if there's no data in the store
+    return dataSource.length === 0;
+  });
 
-  // Fetch games and filters from backend when component mounts
+  // Clear initial loading state as soon as data arrives
   useEffect(() => {
-    if (!hasFetchedRef.current && dataSource.length === 0 && !loading) {
+    if (dataSource.length > 0 && isInitialLoading) {
+      setIsInitialLoading(false);
+    }
+  }, [dataSource.length, isInitialLoading]);
+
+  // Fetch games and filters from backend only if data doesn't exist
+  // This prevents unnecessary re-rendering when opening the page with existing data
+  useEffect(() => {
+    // Only fetch once on mount, and only if we don't have data
+    if (!hasFetchedRef.current) {
       hasFetchedRef.current = true;
+      
+      // If data already exists, don't fetch - just clear loading state
+      if (dataSource.length > 0) {
+        setIsInitialLoading(false);
+        return;
+      }
+      
+      // Only fetch if we have no data
       const loadData = async () => {
-        // Load filters first so dropdowns are populated
-        await fetchGameFiltersFromContext();
-        
-        // Then load games
-        const result = await fetchGamesForStore(
-          undefined, // productCode
-          currentPage, // page
-          pageSize, // limit
-          undefined, // search
-          undefined, // category
-          undefined, // provider
-          undefined // status - fetch all games initially
-        );
-        if (!result.success) {
-          message.error(
-            result.error ||
-              "Failed to load games. Please check if the backend is running."
+        try {
+          // Load filters first so dropdowns are populated
+          await fetchGameFiltersFromContext();
+          
+          // Then load games immediately - fetchGamesForStore will set loading state
+          const result = await fetchGamesForStore(
+            undefined, // productCode
+            currentPage, // page
+            pageSize, // limit
+            undefined, // search
+            undefined, // category
+            undefined, // provider
+            undefined // status - fetch all games initially
           );
+          
+          // Clear initial loading state once data is loaded
+          setIsInitialLoading(false);
+          
+          if (!result.success) {
+            message.error(
+              result.error ||
+                "Failed to load games. Please check if the backend is running."
+            );
+          }
+        } catch (error) {
+          setIsInitialLoading(false);
+          message.error(error.message || "Failed to load games");
         }
       };
+      
       loadData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -396,6 +430,14 @@ const Table = () => {
   ];
 
   const handlePageChange = async (page) => {
+    // Optimistic update: Change button color first by updating page number immediately
+    // This provides instant visual feedback before data loads
+    setGameStoreCurrentPage(page);
+    
+    // Small delay to allow button color change to be visible, then fetch data
+    // This creates a smooth, natural transition
+    await new Promise(resolve => setTimeout(resolve, 50));
+    
     // Fetch games for the new page, preserving current search filters
     const currentPageSize = state.gameStore.pagination.pageSize;
     const result = await fetchGamesForStore(
@@ -407,6 +449,8 @@ const Table = () => {
       currentSearchFilters.provider // provider
     );
     if (!result.success) {
+      // Revert page on error
+      setGameStoreCurrentPage(currentPage);
       message.error(
         result.error ||
           "Failed to load games. Please check if the backend is running."
@@ -488,7 +532,6 @@ const Table = () => {
   };
 
   const handlePingCancel = () => {
-    console.log("Ping cancelled");
     closeGameStoreModal("isPingModalOpen");
   };
 
@@ -737,8 +780,9 @@ const Table = () => {
         </Button>
       </div>
 
-      <div className="table-wrapper">
-        {loading ? (
+      <div className={`table-wrapper ${loading && !isInitialLoading ? 'loading' : ''}`}>
+        {(loading || isInitialLoading) && dataSource.length === 0 ? (
+          // Show spinner while loading or during initial load
           <div
             style={{
               display: "flex",
@@ -769,7 +813,7 @@ const Table = () => {
             columns={columns}
             dataSource={tableData}
             pagination={false}
-            className="game-store-table"
+            className={`game-store-table ${!loading ? 'fade-in' : ''}`}
             rowClassName="table-row"
             bordered={false}
             size="small"
@@ -829,4 +873,5 @@ const Table = () => {
   );
 };
 
-export default Table;
+// Memoize the component to prevent unnecessary re-renders
+export default React.memo(Table);
