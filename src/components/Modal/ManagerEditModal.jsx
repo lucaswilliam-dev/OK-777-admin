@@ -15,7 +15,9 @@ const ManagerEditModal = ({ open, onOk, onCancel, initialData = null }) => {
   const [enName, setEnName] = useState(safeData.enName || "");
   const [provider, setProvider] = useState(safeData.provider || undefined);
   const [category, setCategory] = useState(safeData.category || undefined);
-  const [tags, setTags] = useState(safeData.tags || ["Hot", "New"]);
+  const [tags, setTags] = useState(
+    Array.isArray(safeData.tags) ? safeData.tags : []
+  );
   // Visibility is stored as array of language codes (numbers 0-43)
   const [visibility, setVisibility] = useState(
     safeData.visibility || []
@@ -26,6 +28,8 @@ const ManagerEditModal = ({ open, onOk, onCancel, initialData = null }) => {
 
   const [providerOptions, setProviderOptions] = useState([]);
   const [categoryOptions, setCategoryOptions] = useState([]);
+  const [tagOptions, setTagOptions] = useState([]);
+  const [visibilityOptions, setVisibilityOptions] = useState([]);
 
   const uploadEndpoint = useMemo(
     () => `${getServerBaseURL()}/api/v1/admin/uploads/image`,
@@ -44,7 +48,11 @@ const ManagerEditModal = ({ open, onOk, onCancel, initialData = null }) => {
 
   useEffect(() => {
     const loadDropdownData = async () => {
-      if (dropdowns.categories.length > 0 && dropdowns.providers.length > 0) {
+      if (
+        dropdowns.categories.length > 0 &&
+        dropdowns.providers.length > 0 &&
+        dropdowns.tags.length > 0
+      ) {
         const categoryOpts = dropdowns.categories.map((cat) => ({
           value: cat.name,
           label: cat.name,
@@ -53,8 +61,15 @@ const ManagerEditModal = ({ open, onOk, onCancel, initialData = null }) => {
           value: prov,
           label: prov,
         }));
+        const tagOpts = dropdowns.tags
+          .filter((tag) => tag.state !== false)
+          .map((tag) => ({
+            value: tag.id,
+            label: tag.name,
+          }));
         setCategoryOptions(categoryOpts);
         setProviderOptions(providerOpts);
+        setTagOptions(tagOpts);
       } else {
         const result = await fetchDropdownData();
         if (result.success) {
@@ -66,14 +81,21 @@ const ManagerEditModal = ({ open, onOk, onCancel, initialData = null }) => {
             value: prov,
             label: prov,
           }));
+          const tagOpts = (result.tags || [])
+            .filter((tag) => tag.state !== false)
+            .map((tag) => ({
+              value: tag.id,
+              label: tag.name,
+            }));
           setCategoryOptions(categoryOpts);
           setProviderOptions(providerOpts);
+          setTagOptions(tagOpts);
         }
       }
     };
 
     loadDropdownData();
-  }, [fetchDropdownData, dropdowns.categories, dropdowns.providers]);
+  }, [fetchDropdownData, dropdowns.categories, dropdowns.providers, dropdowns.tags]);
 
   useEffect(() => {
     if (open) {
@@ -102,6 +124,42 @@ const ManagerEditModal = ({ open, onOk, onCancel, initialData = null }) => {
       } else {
         setFileList([]);
       }
+      
+      // Extract language codes from extra_langName to build dynamic visibility options
+      const langNameData = data.fullData?.extra_langName || data.fullData?.langName;
+      let extractedCodes = [];
+      
+      if (langNameData) {
+        try {
+          const parsed = typeof langNameData === 'string' 
+            ? JSON.parse(langNameData) 
+            : langNameData;
+          
+          if (parsed && typeof parsed === 'object') {
+            // Extract all keys (language codes) from the langName object
+            extractedCodes = Object.keys(parsed)
+              .map(key => {
+                const code = typeof key === 'string' ? parseInt(key, 10) : Number(key);
+                return !isNaN(code) ? code : null;
+              })
+              .filter(code => code !== null && code >= 0 && code <= 43)
+              .sort((a, b) => a - b);
+          }
+        } catch (e) {
+          console.warn("Failed to parse langName data:", e);
+        }
+      }
+      
+      // Build visibility options from extracted language codes
+      const dynamicVisibilityOptions = extractedCodes.length > 0
+        ? extractedCodes.map(code => ({
+            value: code,
+            label: languageCodeMap[code] || `Language ${code}`,
+          }))
+        : [];
+      
+      setVisibilityOptions(dynamicVisibilityOptions);
+      
       setLoading(false);
       setUploadingImage(false);
     } else {
@@ -109,6 +167,7 @@ const ManagerEditModal = ({ open, onOk, onCancel, initialData = null }) => {
       setLoading(false);
       setUploadingImage(false);
       setUploadedImagePath(null);
+      setVisibilityOptions([]);
     }
   }, [open, initialData]);
 
@@ -125,13 +184,20 @@ const ManagerEditModal = ({ open, onOk, onCancel, initialData = null }) => {
 
     setLoading(true);
     try {
+      const normalizedTags = Array.isArray(tags)
+        ? tags
+            .map((tagId) =>
+              typeof tagId === "string" ? parseInt(tagId, 10) : Number(tagId)
+            )
+            .filter((tagId) => !Number.isNaN(tagId))
+        : [];
       if (onOk) {
         await onOk({
           zhName: zhName.trim(),
           enName: enName.trim(),
           provider: provider || undefined,
           category: category || undefined,
-          tags,
+          tags: normalizedTags,
           visibility,
           coverImage: coverImageUrl,
           uploadedImagePath,
@@ -237,58 +303,53 @@ const ManagerEditModal = ({ open, onOk, onCancel, initialData = null }) => {
     return true;
   };
 
-  const tagOptions = [
-    { value: "Hot", label: "Hot" },
-    { value: "New", label: "New" },
-  ];
-
-  // Language options based on language codes (0-43)
-  const visibilityOptions = [
-    { value: 0, label: "English" },
-    { value: 1, label: "Traditional Chinese" },
-    { value: 2, label: "Simplify Chinese" },
-    { value: 3, label: "Thai" },
-    { value: 4, label: "Indonesia" },
-    { value: 5, label: "Japanese" },
-    { value: 6, label: "Korea" },
-    { value: 7, label: "Vietnamese" },
-    { value: 8, label: "Deutsch" },
-    { value: 9, label: "Espanol" },
-    { value: 10, label: "Francais" },
-    { value: 11, label: "Russia" },
-    { value: 12, label: "Portuguese" },
-    { value: 13, label: "Burmese" },
-    { value: 14, label: "Danish" },
-    { value: 15, label: "Finnish" },
-    { value: 16, label: "Italian" },
-    { value: 17, label: "Dutch" },
-    { value: 18, label: "Norwegian" },
-    { value: 19, label: "Polish" },
-    { value: 20, label: "Romanian" },
-    { value: 21, label: "Swedish" },
-    { value: 22, label: "Turkish" },
-    { value: 23, label: "Bulgarian" },
-    { value: 24, label: "Czech" },
-    { value: 25, label: "Greek" },
-    { value: 26, label: "Hungarian" },
-    { value: 27, label: "Brazilian Portugese" },
-    { value: 28, label: "Slovak" },
-    { value: 29, label: "Georgian" },
-    { value: 30, label: "Latvian" },
-    { value: 31, label: "Ukrainian" },
-    { value: 32, label: "Estonian" },
-    { value: 33, label: "Filipino" },
-    { value: 34, label: "Cambodian" },
-    { value: 35, label: "Lao" },
-    { value: 36, label: "Malay" },
-    { value: 37, label: "Cantonese" },
-    { value: 38, label: "Tamil" },
-    { value: 39, label: "Hindi" },
-    { value: 40, label: "European Spanish" },
-    { value: 41, label: "Azerbaijani" },
-    { value: 42, label: "Brunei Darussalam" },
-    { value: 43, label: "Croatian" },
-  ];
+  // Language code to name mapping (0-43)
+  const languageCodeMap = {
+    0: "English",
+    1: "Traditional Chinese",
+    2: "Simplify Chinese",
+    3: "Thai",
+    4: "Indonesia",
+    5: "Japanese",
+    6: "Korea",
+    7: "Vietnamese",
+    8: "Deutsch",
+    9: "Espanol",
+    10: "Francais",
+    11: "Russia",
+    12: "Portuguese",
+    13: "Burmese",
+    14: "Danish",
+    15: "Finnish",
+    16: "Italian",
+    17: "Dutch",
+    18: "Norwegian",
+    19: "Polish",
+    20: "Romanian",
+    21: "Swedish",
+    22: "Turkish",
+    23: "Bulgarian",
+    24: "Czech",
+    25: "Greek",
+    26: "Hungarian",
+    27: "Brazilian Portugese",
+    28: "Slovak",
+    29: "Georgian",
+    30: "Latvian",
+    31: "Ukrainian",
+    32: "Estonian",
+    33: "Filipino",
+    34: "Cambodian",
+    35: "Lao",
+    36: "Malay",
+    37: "Cantonese",
+    38: "Tamil",
+    39: "Hindi",
+    40: "European Spanish",
+    41: "Azerbaijani",
+    42: "Brunei Darussalam",
+    43: "Croatian",
+  };
 
   // State to store preview URL
   const [previewUrl, setPreviewUrl] = useState("/cat.jpg");

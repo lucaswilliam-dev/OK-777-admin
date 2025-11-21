@@ -1,9 +1,10 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Table as AntTable, Switch, Space, Button, Pagination, Spin } from "antd";
 import AddOrEditModal from "../../../Modal/AddOrEditModal";
 import DeleteModal from "../../../Modal/DeleteModal";
 import { useAppContext } from "../../../../contexts";
-import { getImageURL } from "../../../../services/api";
+import apiService, { getImageURL } from "../../../../services/api";
+import { useNotification } from "../../../../contexts/NotificationContext";
 import "./style.css";
 
 const Table = () => {
@@ -19,10 +20,12 @@ const Table = () => {
     confirmDeleteGameProviderItem,
     fetchGameProviders,
   } = useAppContext();
+  const { notifySuccess, notifyError } = useNotification();
+  const [checkingDeleteId, setCheckingDeleteId] = useState(null);
 
   const { dataSource, pagination, modals, loading, error } = state.gameProvider;
   const { currentPage, pageSize, totalItems } = pagination;
-  const { isAddEditModalOpen, isDeleteModalOpen, editingItem } = modals;
+  const { isAddEditModalOpen, isDeleteModalOpen, editingItem, itemToDelete } = modals;
 
   // Fetch providers on component mount only if data is empty
   useEffect(() => {
@@ -37,7 +40,12 @@ const Table = () => {
   const totalCount = totalItems || 0;
 
   const handleStateChange = async (record, checked) => {
-    await updateGameProviderItem(record.key, { enabled: checked, state: checked });
+    const result = await updateGameProviderItem(record.key, { enabled: checked, state: checked });
+    if (result.success) {
+      notifySuccess("Provider updated successfully", `"${record.name}" is now ${checked ? "active" : "inactive"}.`);
+    } else {
+      notifyError(result.error || "Failed to update provider");
+    }
   };
 
   const columns = [
@@ -117,8 +125,12 @@ const Table = () => {
             Edit
           </p>
           <p
-            className="delete-link"
-            onClick={() => openGameProviderDeleteModal(record)}
+            className={`delete-link ${checkingDeleteId === record.id ? "disabled" : ""}`}
+            onClick={() => {
+              if (!checkingDeleteId) {
+                handleDeleteRequest(record);
+              }
+            }}
           >
             Delete
           </p>
@@ -137,9 +149,69 @@ const Table = () => {
     openGameProviderAddEditModal();
   };
 
-  const handleDeleteOk = () => {
-    console.log("Delete confirmed");
-    confirmDeleteGameProviderItem();
+  const getProviderBlockedMessage = useMemo(
+    () => (name, linkedGames) => {
+      const label = name ? `Provider "${name}"` : "This provider";
+      if (typeof linkedGames === "number" && linkedGames >= 0) {
+        if (linkedGames === 0) {
+          return `${label} cannot be deleted while it is linked to existing games. Remove or reassign those games first.`;
+        }
+        return `${label} cannot be deleted while it is linked to ${linkedGames} game${linkedGames === 1 ? "" : "s"}. Remove or reassign those games first.`;
+      }
+      return `${label} cannot be deleted while it is linked to existing games. Remove or reassign those games first.`;
+    },
+    []
+  );
+
+  const handleDeleteOk = async () => {
+    const result = await confirmDeleteGameProviderItem();
+    if (result.success) {
+      notifySuccess("Deletion was successful", "The provider has been removed.");
+    } else {
+      const relationBlocked =
+        result.status === 409 ||
+        (result.error && result.error.toLowerCase().includes("cannot delete provider"));
+      if (relationBlocked) {
+        notifyError(
+          getProviderBlockedMessage(itemToDelete?.name)
+        );
+      } else {
+        notifyError(result.error || "Failed to delete provider");
+      }
+    }
+  };
+
+  const handleDeleteRequest = async (record) => {
+    if (!record?.id) {
+      notifyError("Provider not found");
+      return;
+    }
+    setCheckingDeleteId(record.id);
+    try {
+      const response = await apiService.checkGameProviderDeletable(record.id);
+      const deletable =
+        response?.deletable !== false && (response.success || response.success === undefined);
+      if (deletable) {
+        openGameProviderDeleteModal(record);
+      } else {
+        notifyError(
+          getProviderBlockedMessage(record?.name, response?.linkedGames)
+        );
+      }
+    } catch (error) {
+      const message = error.message || "Failed to verify provider deletion.";
+      const relationBlocked =
+        error.status === 409 ||
+        message.toLowerCase().includes("cannot delete") ||
+        message.toLowerCase().includes("related games");
+      notifyError(
+        relationBlocked
+          ? getProviderBlockedMessage(record?.name)
+          : message
+      );
+    } finally {
+      setCheckingDeleteId(null);
+    }
   };
 
   const handleDeleteCancel = () => {
@@ -168,9 +240,12 @@ const Table = () => {
         };
         
         const result = await updateGameProviderItem(editingItem.key, updates);
-        if (!result.success) {
+        if (result.success) {
+          notifySuccess("Provider updated successfully", `"${data.name || editingItem.name}" changes saved.`);
+        } else {
           console.error('Failed to update product:', result.error);
-          // You could show an error message to the user here
+          notifyError(result.error || "Failed to update provider");
+          return;
         }
       } else {
         // Add new item
@@ -193,16 +268,17 @@ const Table = () => {
         const result = await addGameProviderItem(newItem);
         if (!result.success) {
           console.error('Failed to create product:', result.error);
-          // You could show an error message to the user here
-        } else {
-          // Refresh the list to get updated data with proper pagination
-          fetchGameProviders(currentPage, pageSize);
+          notifyError(result.error || "Failed to create provider");
+          return;
         }
+        notifySuccess("Added correctly.", `"${data.name}" is now available.`);
+        // Refresh the list to get updated data with proper pagination
+        fetchGameProviders(currentPage, pageSize);
       }
       closeGameProviderAddEditModal();
     } catch (error) {
       console.error('Error in handleOk:', error);
-      // You could show an error message to the user here
+      notifyError(error.message || "Operation failed");
     }
   };
 

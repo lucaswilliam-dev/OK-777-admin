@@ -86,7 +86,13 @@ class ApiService {
           localStorage.removeItem('user');
         }
         
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+        const error = new Error(
+          errorData.error ||
+          errorData.message ||
+          `HTTP error! status: ${response.status}`
+        );
+        error.status = response.status;
+        throw error;
       }
 
       const data = await response.json();
@@ -116,7 +122,9 @@ class ApiService {
           console.error('   - Configure the proxy server to use the valid certificate');
           console.error('');
           console.error('URL:', `${API_BASE_URL}${endpoint}`);
-          throw new Error('HTTPS Connection Failed: SSL certificate error detected. Please visit https://156.238.242.137:8443/api/v1 in your browser first to accept the certificate, or contact the administrator to install a valid SSL certificate.');
+        const httpsError = new Error('HTTPS Connection Failed: SSL certificate error detected. Please visit https://156.238.242.137:8443/api/v1 in your browser first to accept the certificate, or contact the administrator to install a valid SSL certificate.');
+        httpsError.status = 503;
+        throw httpsError;
         }
         
         console.error('API request failed - Network error. Possible causes:');
@@ -125,7 +133,9 @@ class ApiService {
         console.error('3. Network connectivity issue');
         console.error('4. Backend server not responding');
         console.error('URL:', `${API_BASE_URL}${endpoint}`);
-        throw new Error('Network error: Unable to connect to server. Please check your connection and ensure the backend server is running.');
+        const networkError = new Error('Network error: Unable to connect to server. Please check your connection and ensure the backend server is running.');
+        networkError.status = 503;
+        throw networkError;
       }
       console.error('API request failed:', error);
       throw error;
@@ -355,6 +365,59 @@ class ApiService {
   }
 
   /**
+   * Get all game tags
+   * @returns {Promise} Tags list
+   */
+  async getGameTags() {
+    return this.request('/admin/game-tags');
+  }
+
+  /**
+   * Create a new game tag
+   * @param {string} name - Tag name
+   * @returns {Promise} Created tag
+   */
+  async createGameTag(name, icon, state) {
+    return this.request('/admin/game-tags/add', {
+      method: 'POST',
+      body: JSON.stringify({ name, icon, state }),
+    });
+  }
+
+  /**
+   * Update a game tag
+   * @param {number} id - Tag ID
+   * @param {string} name - Tag name
+   * @returns {Promise} Updated tag
+   */
+  async updateGameTag(id, name, icon, state) {
+    return this.request(`/admin/game-tags/${id}/update`, {
+      method: 'PUT',
+      body: JSON.stringify({ name, icon, state }),
+    });
+  }
+
+  /**
+   * Delete a game tag
+   * @param {number} id - Tag ID
+   * @returns {Promise} Deletion response
+   */
+  async deleteGameTag(id) {
+    return this.request(`/admin/game-tags/${id}/delete`, {
+      method: 'DELETE',
+    });
+  }
+
+  /**
+   * Check if a game category can be deleted
+   * @param {number} id - Category ID
+   * @returns {Promise} Deletion status
+   */
+  async checkGameCategoryDeletable(id) {
+    return this.request(`/admin/game-categories/${id}/delete-check`);
+  }
+
+  /**
    * Get all products (includes provider information)
    * @param {number} page - Page number (optional)
    * @param {number} limit - Number of products per page (optional)
@@ -440,9 +503,11 @@ class ApiService {
    * @param {string} status - Status filter (optional)
    * @param {string} startDate - Created at start date ISO string (optional)
    * @param {string} endDate - Created at end date ISO string (optional)
+   * @param {number[]} tags - Tag ID filters (optional)
+   * @param {number[]} visibility - Visibility codes (optional)
    * @returns {Promise} Game list with pagination
    */
-  async getGamesInManager(page = 1, limit = 21, search, categoryId, providerId, status, startDate, endDate) {
+  async getGamesInManager(page = 1, limit = 21, search, categoryId, providerId, status, startDate, endDate, tags, visibility) {
     let endpoint = `/admin/games-in-manager?page=${page}&limit=${limit}`;
     if (search !== undefined && search !== null && search !== "") {
       endpoint += `&search=${encodeURIComponent(search)}`;
@@ -461,6 +526,12 @@ class ApiService {
     }
     if (endDate) {
       endpoint += `&endDate=${encodeURIComponent(endDate)}`;
+    }
+    if (Array.isArray(tags) && tags.length > 0) {
+      endpoint += `&tags=${tags.join(",")}`;
+    }
+    if (Array.isArray(visibility) && visibility.length > 0) {
+      endpoint += `&visibility=${visibility.join(",")}`;
     }
     return this.request(endpoint);
   }
@@ -499,6 +570,15 @@ class ApiService {
     return this.request(`/admin/products/${id}`, {
       method: 'DELETE',
     });
+  }
+
+  /**
+   * Check if a provider/product can be deleted
+   * @param {number} id - Product ID
+   * @returns {Promise} Deletion status
+   */
+  async checkGameProviderDeletable(id) {
+    return this.request(`/admin/products/${id}/delete-check`);
   }
 
   /**

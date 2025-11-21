@@ -7,11 +7,11 @@ import {
   Select,
   DatePicker,
   Spin,
-  message,
 } from "antd";
 import ManagerEditModal from "../../../Modal/ManagerEditModal";
 import { ExclamationCircleFilled, SearchOutlined } from "@ant-design/icons";
 import { useAppContext } from "../../../../contexts";
+import { useNotification } from "../../../../contexts/NotificationContext";
 import Product from "../Product";
 import apiService from "../../../../services/api";
 import "./style.css";
@@ -27,6 +27,8 @@ const GameProducts = () => {
     updateGameManagerItem,
   } = useAppContext();
 
+  const { notifySuccess, notifyError } = useNotification();
+
   const { dataSource, loading, error, pagination } = state.gameManager;
   const { currentPage, pageSize } = pagination;
   const { dropdowns } = state;
@@ -35,15 +37,17 @@ const GameProducts = () => {
   const [gameName, setGameName] = useState("");
   const [category, setCategory] = useState("All");
   const [provider, setProvider] = useState("All");
-  const [tags, setTags] = useState(["Hot", "New"]);
+  const [tags, setTags] = useState(["All"]);
   const [dateRange, setDateRange] = useState(null);
-  const [visibility, setVisibility] = useState(["EN", "ZH"]);
+  const [visibility, setVisibility] = useState(["All"]);
   const hasFetchedRef = useRef(false);
   const prevFiltersRef = useRef({
     category: undefined,
     provider: undefined,
     startDate: null,
     endDate: null,
+    tagsKey: "[]",
+    visibilityKey: "[]",
   });
   const [currentSearchFilters, setCurrentSearchFilters] = useState({
     search: undefined,
@@ -51,6 +55,8 @@ const GameProducts = () => {
     provider: undefined,
     startDate: undefined,
     endDate: undefined,
+    tags: undefined,
+    visibility: undefined,
   });
 
   const getDateRangeISO = useCallback((range) => {
@@ -83,12 +89,37 @@ const GameProducts = () => {
   }, []);
 
   const normalizeFilterValue = useCallback((value) => {
-    if (!value || value === "All") {
+      if (!value || value === "All") {
       return undefined;
     }
     const trimmedValue = value.toString().trim();
     return trimmedValue.length ? trimmedValue : undefined;
   }, []);
+
+  const normalizeNumberArray = useCallback((values) => {
+    if (!Array.isArray(values) || values.length === 0) {
+      return undefined;
+    }
+    const filtered = values.filter((value) => value !== "All");
+    if (filtered.length === 0) return undefined;
+    const normalized = filtered
+      .map((value) =>
+        typeof value === "string" ? parseInt(value, 10) : Number(value)
+      )
+      .filter((value) => Number.isInteger(value) && !Number.isNaN(value));
+    return normalized.length ? normalized : undefined;
+  }, []);
+
+  const getArraySignature = useCallback(
+    (values) => {
+      if (!Array.isArray(values)) {
+        return "[]";
+      }
+      const normalized = normalizeNumberArray(values) || [];
+      return JSON.stringify([...normalized].sort((a, b) => a - b));
+    },
+    [normalizeNumberArray]
+  );
 
   // Fetch games in manager only if data is empty
   // This prevents unnecessary re-fetching when navigating back to the page
@@ -97,7 +128,7 @@ const GameProducts = () => {
       const loadGames = async () => {
         const result = await fetchGamesInManager(currentPage, pageSize);
         if (!result.success) {
-          message.error(result.error || "Failed to load games in manager.");
+          notifyError(result.error || "Failed to load games in manager.");
         }
         hasFetchedRef.current = true;
         prevFiltersRef.current = {
@@ -105,6 +136,8 @@ const GameProducts = () => {
           provider: normalizeFilterValue(provider),
           startDate: null,
           endDate: null,
+          tagsKey: getArraySignature(tags),
+          visibilityKey: getArraySignature(visibility),
         };
       };
       loadGames();
@@ -115,6 +148,8 @@ const GameProducts = () => {
         provider: normalizeFilterValue(provider),
         startDate: null,
         endDate: null,
+        tagsKey: getArraySignature(tags),
+        visibilityKey: getArraySignature(visibility),
       };
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -124,6 +159,8 @@ const GameProducts = () => {
     async (resetPage = true) => {
       const trimmedGameName = gameName.trim();
       const { startDate: startDateIso, endDate: endDateIso } = getDateRangeISO(dateRange);
+      const normalizedTags = normalizeNumberArray(tags);
+      const normalizedVisibility = normalizeNumberArray(visibility);
 
       const filters = {
         search: trimmedGameName || undefined,
@@ -131,6 +168,8 @@ const GameProducts = () => {
         provider: normalizeFilterValue(provider),
         startDate: startDateIso,
         endDate: endDateIso,
+        tags: normalizedTags,
+        visibility: normalizedVisibility,
       };
 
       setCurrentSearchFilters(filters);
@@ -145,11 +184,13 @@ const GameProducts = () => {
         filters.provider,
         undefined,
         filters.startDate,
-        filters.endDate
+        filters.endDate,
+        filters.tags,
+        filters.visibility
       );
 
       if (!result.success) {
-        message.error(result.error || "Failed to filter games in manager.");
+        notifyError(result.error || "Failed to filter games in manager.");
       }
     },
     [
@@ -157,11 +198,14 @@ const GameProducts = () => {
       category,
       provider,
       dateRange,
+      tags,
+      visibility,
       currentPage,
       pageSize,
       fetchGamesInManager,
       getDateRangeISO,
       normalizeFilterValue,
+      normalizeNumberArray,
     ]
   );
 
@@ -172,6 +216,8 @@ const GameProducts = () => {
       provider: normalizeFilterValue(provider),
       startDate: startDateIso || null,
       endDate: endDateIso || null,
+      tagsKey: getArraySignature(tags),
+      visibilityKey: getArraySignature(visibility),
     };
 
     if (!hasFetchedRef.current) {
@@ -183,7 +229,9 @@ const GameProducts = () => {
       prevFiltersRef.current.category !== nextFiltersSnapshot.category ||
       prevFiltersRef.current.provider !== nextFiltersSnapshot.provider ||
       prevFiltersRef.current.startDate !== nextFiltersSnapshot.startDate ||
-      prevFiltersRef.current.endDate !== nextFiltersSnapshot.endDate;
+      prevFiltersRef.current.endDate !== nextFiltersSnapshot.endDate ||
+      prevFiltersRef.current.tagsKey !== nextFiltersSnapshot.tagsKey ||
+      prevFiltersRef.current.visibilityKey !== nextFiltersSnapshot.visibilityKey;
 
     prevFiltersRef.current = nextFiltersSnapshot;
 
@@ -191,7 +239,17 @@ const GameProducts = () => {
       applyFilters(true);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [category, provider, dateRange, getDateRangeISO, applyFilters, normalizeFilterValue]);
+  }, [
+    category,
+    provider,
+    dateRange,
+    tags,
+    visibility,
+    getDateRangeISO,
+    applyFilters,
+    normalizeFilterValue,
+    getArraySignature,
+  ]);
 
   // Server-side pagination - dataSource already contains paginated results
   const paginatedDataSource = dataSource;
@@ -212,10 +270,15 @@ const GameProducts = () => {
   const [providerOptions, setProviderOptions] = useState([
     { value: "All", label: "All" },
   ]);
+  const [tagOptions, setTagOptions] = useState([{ value: "All", label: "All" }]);
 
   useEffect(() => {
     const loadDropdownData = async () => {
-      if (dropdowns.categories.length > 0 && dropdowns.providers.length > 0) {
+      if (
+        dropdowns.categories.length > 0 &&
+        dropdowns.providers.length > 0 &&
+        dropdowns.tags.length > 0
+      ) {
         const categoryOpts = [
           { value: "All", label: "All" },
           ...dropdowns.categories.map((cat) => ({
@@ -230,8 +293,18 @@ const GameProducts = () => {
             label: prov,
           })),
         ];
+        const tagOpts = [
+          { value: "All", label: "All" },
+          ...dropdowns.tags
+            .filter((tag) => tag.state !== false)
+            .map((tag) => ({
+              value: tag.id,
+              label: tag.name,
+            })),
+        ];
         setCategoryOptions(categoryOpts);
         setProviderOptions(providerOpts);
+        setTagOptions(tagOpts);
       } else {
         const result = await fetchDropdownData();
         if (result.success) {
@@ -249,26 +322,71 @@ const GameProducts = () => {
               label: prov,
             })),
           ];
+          const tagOpts = [
+            { value: "All", label: "All" },
+            ...(result.tags || [])
+              .filter((tag) => tag.state !== false)
+              .map((tag) => ({
+                value: tag.id,
+                label: tag.name,
+              })),
+          ];
           setCategoryOptions(categoryOpts);
           setProviderOptions(providerOpts);
+          setTagOptions(tagOpts);
         }
       }
     };
 
     loadDropdownData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const tagOptions = [
-    { value: "Hot", label: "Hot" },
-    { value: "New", label: "New" },
-  ];
+  }, [fetchDropdownData, dropdowns.categories, dropdowns.providers, dropdowns.tags]);
 
   const visibilityOptions = [
-    { value: "EN", label: "EN" },
-    { value: "ZH", label: "ZH" },
-    { value: "DE", label: "DE" },
-    { value: "FR", label: "FR" },
+    { value: "All", label: "All" },
+    { value: 0, label: "English" },
+    { value: 1, label: "Traditional Chinese" },
+    { value: 2, label: "Simplify Chinese" },
+    { value: 3, label: "Thai" },
+    { value: 4, label: "Indonesia" },
+    { value: 5, label: "Japanese" },
+    { value: 6, label: "Korea" },
+    { value: 7, label: "Vietnamese" },
+    { value: 8, label: "Deutsch" },
+    { value: 9, label: "Espanol" },
+    { value: 10, label: "Francais" },
+    { value: 11, label: "Russia" },
+    { value: 12, label: "Portuguese" },
+    { value: 13, label: "Burmese" },
+    { value: 14, label: "Danish" },
+    { value: 15, label: "Finnish" },
+    { value: 16, label: "Italian" },
+    { value: 17, label: "Dutch" },
+    { value: 18, label: "Norwegian" },
+    { value: 19, label: "Polish" },
+    { value: 20, label: "Romanian" },
+    { value: 21, label: "Swedish" },
+    { value: 22, label: "Turkish" },
+    { value: 23, label: "Bulgarian" },
+    { value: 24, label: "Czech" },
+    { value: 25, label: "Greek" },
+    { value: 26, label: "Hungarian" },
+    { value: 27, label: "Brazilian Portugese" },
+    { value: 28, label: "Slovak" },
+    { value: 29, label: "Georgian" },
+    { value: 30, label: "Latvian" },
+    { value: 31, label: "Ukrainian" },
+    { value: 32, label: "Estonian" },
+    { value: 33, label: "Filipino" },
+    { value: 34, label: "Cambodian" },
+    { value: 35, label: "Lao" },
+    { value: 36, label: "Malay" },
+    { value: 37, label: "Cantonese" },
+    { value: 38, label: "Tamil" },
+    { value: 39, label: "Hindi" },
+    { value: 40, label: "European Spanish" },
+    { value: 41, label: "Azerbaijani" },
+    { value: 42, label: "Brunei Darussalam" },
+    { value: 43, label: "Croatian" },
   ];
 
   const handleSearch = async () => {
@@ -286,10 +404,12 @@ const GameProducts = () => {
       filters.provider,
       undefined,
       filters.startDate,
-      filters.endDate
+      filters.endDate,
+      filters.tags,
+      filters.visibility
     );
     if (!result.success) {
-      message.error(result.error || "Failed to load games in manager.");
+      notifyError(result.error || "Failed to load games in manager.");
     }
   };
 
@@ -306,7 +426,7 @@ const GameProducts = () => {
 
   const handleOk = async (data) => {
     if (!editingProduct?.gameId) {
-      message.error("Game ID not found. Cannot update game.");
+      notifyError("Game ID not found. Cannot update game.");
       return;
     }
 
@@ -343,17 +463,18 @@ const GameProducts = () => {
         langName['2'] = data.zhName.trim();
       }
 
-      // Convert tags array to isHot and isNew boolean fields
-      // If "Hot" is in tags array, set isHot to true, otherwise false
-      // If "New" is in tags array, set isNew to true, otherwise false
-      const isHot = Array.isArray(data.tags) && data.tags.includes("Hot");
-      const isNew = Array.isArray(data.tags) && data.tags.includes("New");
+      const normalizedTags = Array.isArray(data.tags)
+        ? data.tags
+            .map((tagId) =>
+              typeof tagId === "string" ? parseInt(tagId, 10) : Number(tagId)
+            )
+            .filter((tagId) => !Number.isNaN(tagId))
+        : [];
 
       // Prepare update data
       const updateData = {
         extra_langName: langName,
-        isHot: isHot,
-        isNew: isNew,
+        tags: normalizedTags,
       };
 
       if (data.provider !== undefined) {
@@ -381,7 +502,7 @@ const GameProducts = () => {
       const response = await apiService.updateGame(editingProduct.gameId, updateData);
 
       if (response.success) {
-        message.success("Game updated successfully!");
+        notifySuccess("Game updated successfully!", "Your changes have been saved.");
         setIsModalOpen(false);
 
         const updatedGame = response.data || {};
@@ -413,8 +534,9 @@ const GameProducts = () => {
           editingProduct.image;
 
         // Extract updated isHot and isNew values from the response
-        const updatedIsHot = updatedGame.isHot ?? false;
-        const updatedIsNew = updatedGame.isNew ?? false;
+        const updatedTags = Array.isArray(updatedGame.tags)
+          ? updatedGame.tags
+          : normalizedTags;
         
         // Extract updated visibility from the response
         let updatedVisibility = [];
@@ -438,8 +560,7 @@ const GameProducts = () => {
           extra_provider: nextProvider,
           extra_gameType: nextCategory,
           image: serverImage,
-          isHot: updatedIsHot,
-          isNew: updatedIsNew,
+          tags: updatedTags,
           visibility: updatedVisibility,
           fullData: {
             ...(editingProduct.fullData || {}),
@@ -448,8 +569,7 @@ const GameProducts = () => {
             extra_provider: nextProvider,
             extra_gameType: nextCategory,
             extra_imageUrl: serverImage,
-            isHot: updatedIsHot,
-            isNew: updatedIsNew,
+            tags: updatedTags,
             visibility: updatedGame.visibility ?? editingProduct.fullData?.visibility,
           },
         };
@@ -457,11 +577,11 @@ const GameProducts = () => {
         updateGameManagerItem(editingProduct.key, updatedFields);
         setEditingProduct(null);
       } else {
-        message.error(response.error || "Failed to update game");
+        notifyError(response.error || "Failed to update game");
       }
     } catch (error) {
       console.error("Error updating game:", error);
-      message.error(error.message || "Failed to update game. Please try again.");
+      notifyError(error.message || "Failed to update game. Please try again.");
     }
   };
 
@@ -498,14 +618,11 @@ const GameProducts = () => {
     // Get the image URL - prefer extra_imageUrl, fallback to image_url
     const imageUrl = product?.fullData?.extra_imageUrl || product?.image || "/cat.jpg";
     
-    // Extract tags from isHot and isNew fields
-    // If isHot is true, include "Hot" in tags array
-    // If isNew is true, include "New" in tags array
-    const tags = [];
-    const isHot = product?.fullData?.isHot || product?.isHot || false;
-    const isNew = product?.fullData?.isNew || product?.isNew || false;
-    if (isHot) tags.push("Hot");
-    if (isNew) tags.push("New");
+    const gameTags = Array.isArray(product?.fullData?.tags)
+      ? product.fullData.tags
+      : Array.isArray(product?.tags)
+      ? product.tags
+      : [];
     
     // Extract visibility from database (JSON field containing array of language codes)
     let visibilityArray = [];
@@ -531,7 +648,7 @@ const GameProducts = () => {
       enName: enName || product?.gameName || "",
       provider: providerName, // Use extra_provider from game table
       category: categoryName, // Use extra_gameType from game table
-      tags: tags.length > 0 ? tags : [], // Get from isHot/isNew fields
+      tags: gameTags,
       visibility: visibilityArray, // Get from visibility field in database
       coverImage: imageUrl,
       gameCode: product?.gameCode,
@@ -543,7 +660,7 @@ const GameProducts = () => {
   const handleLaunchClick = async (product) => {
     // Check if required game data is available
     if (!product.gameCode || !product.gameType || !product.productCode) {
-      message.error("Missing game information. Cannot launch game.");
+      notifyError("Missing game information. Cannot launch game.");
       return;
     }
     setLaunchingGame(true);
@@ -559,16 +676,16 @@ const GameProducts = () => {
       if (response.success && response.url) {
         setLaunchedGameUrl(response.url);
         setGameFrameKey((prev) => prev + 1);
-        message.success("Game launched successfully!");
+        notifySuccess("Game launched successfully!", `${product.enName || product.cnName || product.gameName || "Game"} is live.`);
       } else {
-        message.error(response.message || "Failed to launch game");
+        notifyError(response.message || "Failed to launch game");
       }
     } catch (error) {
       console.error("Launch game error:", error);
       const errorMessage =
         error.message ||
         "Failed to launch game. Please check your authentication.";
-      message.error(errorMessage);
+      notifyError(errorMessage);
     } finally {
       setLaunchingGame(false);
     }
@@ -616,7 +733,7 @@ const GameProducts = () => {
           <div className="filter-item">
             <span className="filter-label">Tags:</span>
             <Select
-              mode="multiple"
+            mode="multiple"
               value={tags}
               onChange={setTags}
               className="filter-select-multiple filter-select-multiple-2"
@@ -648,7 +765,7 @@ const GameProducts = () => {
           <div className="filter-item">
             <span className="filter-label">Visibility:</span>
             <Select
-              mode="multiple"
+            mode="multiple"
               value={visibility}
               onChange={setVisibility}
               className="filter-select-multiple filter-select-multiple-2"

@@ -129,28 +129,13 @@ const initialState = {
 
   // Game Tags
   gameTags: {
-    dataSource: [
-      {
-        key: "1",
-        id: 23,
-        name: "Hot",
-        icon: "HOT",
-        state: true,
-        createTime: "2021-02-28 10:30",
-      },
-      {
-        key: "2",
-        id: 25,
-        name: "New",
-        icon: "NEW",
-        state: true,
-        createTime: "2021-02-28 10:30",
-      },
-    ],
+    dataSource: [],
+    loading: false,
+    error: null,
     pagination: {
       currentPage: 1,
       pageSize: 10,
-      totalItems: 2,
+      totalItems: 0,
     },
     modals: {
       isAddEditModalOpen: false,
@@ -164,6 +149,7 @@ const initialState = {
   dropdowns: {
     categories: [],
     providers: [],
+    tags: [],
     loading: false,
     lastFetched: null,
   },
@@ -187,6 +173,8 @@ export const AppProvider = ({ children }) => {
     status: undefined,
     startDate: undefined,
     endDate: undefined,
+    tags: undefined,
+    visibility: undefined,
   });
   
   // Keep ref in sync with state
@@ -473,7 +461,11 @@ export const AppProvider = ({ children }) => {
       }
     } catch (error) {
       console.error('Error deleting game category:', error);
-      return { success: false, error: error.message || 'Failed to delete category' };
+      return { 
+        success: false, 
+        error: error.message || 'Failed to delete category',
+        status: error.status
+      };
     }
   }, []);
 
@@ -808,7 +800,11 @@ export const AppProvider = ({ children }) => {
           },
         },
       }));
-      return { success: false, error: error.message || 'Failed to delete product' };
+      return { 
+        success: false, 
+        error: error.message || 'Failed to delete product',
+        status: error.status
+      };
     }
   }, []);
 
@@ -824,12 +820,14 @@ export const AppProvider = ({ children }) => {
     if (!forceRefresh && 
         stateRef.current.dropdowns.categories.length > 0 && 
         stateRef.current.dropdowns.providers.length > 0 &&
+        stateRef.current.dropdowns.tags.length > 0 &&
         cacheAge < CACHE_DURATION) {
       // Data is cached and fresh, no need to fetch
       return {
         success: true,
         categories: stateRef.current.dropdowns.categories,
         providers: stateRef.current.dropdowns.providers,
+        tags: stateRef.current.dropdowns.tags,
       };
     }
 
@@ -842,9 +840,10 @@ export const AppProvider = ({ children }) => {
     }));
 
     try {
-      const [categoriesResponse, providersResponse] = await Promise.all([
+      const [categoriesResponse, providersResponse, tagsResponse] = await Promise.all([
         apiService.getGameCategories(),
         apiService.getProviders(),
+        apiService.getGameTags(),
       ]);
 
       const categories = categoriesResponse.success && categoriesResponse.data
@@ -854,11 +853,21 @@ export const AppProvider = ({ children }) => {
         ? providersResponse.data
         : [];
 
+      const tags = tagsResponse.success && Array.isArray(tagsResponse.data)
+        ? tagsResponse.data.map((tag) => ({
+            id: tag.id,
+            name: tag.name,
+            icon: tag.icon || "HOT",
+            state: tag.state !== undefined ? Boolean(tag.state) : true,
+          }))
+        : [];
+
       setState((prev) => ({
         ...prev,
         dropdowns: {
           categories,
           providers,
+          tags,
           loading: false,
           lastFetched: Date.now(),
         },
@@ -868,6 +877,7 @@ export const AppProvider = ({ children }) => {
         success: true,
         categories,
         providers,
+        tags,
       };
     } catch (error) {
       console.error("Error fetching dropdown data:", error);
@@ -883,6 +893,7 @@ export const AppProvider = ({ children }) => {
         error: error.message || "Failed to fetch dropdown data",
         categories: stateRef.current.dropdowns.categories,
         providers: stateRef.current.dropdowns.providers,
+        tags: stateRef.current.dropdowns.tags,
       };
     }
   }, []);
@@ -1303,69 +1314,212 @@ export const AppProvider = ({ children }) => {
   }, []);
 
   // Game Tags actions
-  const updateGameTagsDataSource = useCallback((dataSource) => {
+  const fetchGameTags = useCallback(async () => {
     setState((prev) => ({
       ...prev,
       gameTags: {
         ...prev.gameTags,
-        dataSource,
+        loading: true,
+        error: null,
       },
     }));
-  }, []);
 
-  const updateGameTagsItem = useCallback((key, updates) => {
-    setState((prev) => ({
-      ...prev,
-      gameTags: {
-        ...prev.gameTags,
-        dataSource: prev.gameTags.dataSource.map((item) =>
-          item.key === key ? { ...item, ...updates } : item
-        ),
-      },
-    }));
-  }, []);
+    try {
+      const response = await apiService.getGameTags();
+      if (response.success && Array.isArray(response.data)) {
+        const transformedTags = response.data.map((tag) => ({
+          key: tag.id.toString(),
+          id: tag.id,
+          name: tag.name,
+          icon: tag.icon || "HOT",
+          state: tag.state !== undefined ? Boolean(tag.state) : true,
+          createTime: tag.createdAt
+            ? new Date(tag.createdAt).toLocaleString("en-US", {
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: false,
+              }).replace(",", "")
+            : new Date().toLocaleString(),
+        }));
 
-  const addGameTagsItem = useCallback((newItem) => {
-    setState((prev) => ({
-      ...prev,
-      gameTags: {
-        ...prev.gameTags,
-        dataSource: [...prev.gameTags.dataSource, newItem],
-        pagination: {
-          ...prev.gameTags.pagination,
-          totalItems: prev.gameTags.pagination.totalItems + 1,
+        const dropdownTags = response.data.map((tag) => ({
+          id: tag.id,
+          name: tag.name,
+          icon: tag.icon || "HOT",
+          state: tag.state !== undefined ? Boolean(tag.state) : true,
+        }));
+
+        setState((prev) => ({
+          ...prev,
+          gameTags: {
+            ...prev.gameTags,
+            dataSource: transformedTags,
+            loading: false,
+            error: null,
+            pagination: {
+              ...prev.gameTags.pagination,
+              totalItems: transformedTags.length,
+            },
+          },
+          dropdowns: {
+            ...prev.dropdowns,
+            tags: dropdownTags,
+          },
+        }));
+        return { success: true };
+      }
+      throw new Error(response.error || "Failed to fetch tags");
+    } catch (error) {
+      console.error("Error fetching game tags:", error);
+      const errorMessage = error.message || "Failed to fetch tags";
+      setState((prev) => ({
+        ...prev,
+        gameTags: {
+          ...prev.gameTags,
+          loading: false,
+          error: errorMessage,
         },
-      },
-    }));
+      }));
+      return { success: false, error: errorMessage };
+    }
   }, []);
 
-  const deleteGameTagsItem = useCallback((key) => {
-    setState((prev) => ({
-      ...prev,
-      gameTags: {
-        ...prev.gameTags,
-        dataSource: prev.gameTags.dataSource.filter(
-          (item) => item.key !== key
-        ),
-        pagination: {
-          ...prev.gameTags.pagination,
-          totalItems: prev.gameTags.pagination.totalItems - 1,
-        },
-      },
-    }));
+  const addGameTagsItem = useCallback(async (newItem) => {
+    try {
+      const response = await apiService.createGameTag(
+        newItem.name,
+        newItem.icon,
+        newItem.state
+      );
+      if (response.success && response.data) {
+        const transformedTag = {
+          key: response.data.id.toString(),
+          id: response.data.id,
+          name: response.data.name,
+          icon: response.data.icon || newItem.icon || "HOT",
+          state:
+            response.data.state !== undefined
+              ? Boolean(response.data.state)
+              : newItem.state !== undefined
+              ? Boolean(newItem.state)
+              : true,
+          createTime: response.data.createdAt
+            ? new Date(response.data.createdAt).toLocaleString("en-US", {
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit",
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: false,
+              }).replace(",", "")
+            : new Date().toLocaleString(),
+        };
+
+        setState((prev) => ({
+          ...prev,
+          gameTags: {
+            ...prev.gameTags,
+            dataSource: [...prev.gameTags.dataSource, transformedTag],
+            pagination: {
+              ...prev.gameTags.pagination,
+              totalItems: prev.gameTags.pagination.totalItems + 1,
+            },
+          },
+          dropdowns: {
+            ...prev.dropdowns,
+            tags: [
+              ...prev.dropdowns.tags,
+              {
+                id: transformedTag.id,
+                name: transformedTag.name,
+                icon: transformedTag.icon,
+                state: transformedTag.state,
+              },
+            ],
+          },
+        }));
+        return { success: true, data: transformedTag };
+      }
+      throw new Error(response.error || "Failed to create tag");
+    } catch (error) {
+      console.error("Error creating game tag:", error);
+      return { success: false, error: error.message || "Failed to create tag" };
+    }
   }, []);
 
-  const setGameTagsPagination = useCallback((pagination) => {
-    setState((prev) => ({
-      ...prev,
-      gameTags: {
-        ...prev.gameTags,
-        pagination: {
-          ...prev.gameTags.pagination,
-          ...pagination,
-        },
-      },
-    }));
+  const updateGameTagsItem = useCallback(async (key, updates) => {
+    try {
+      const tag = stateRef.current.gameTags.dataSource.find(
+        (item) => item.key === key
+      );
+      if (!tag || !tag.id) {
+        throw new Error("Tag not found");
+      }
+      const response = await apiService.updateGameTag(
+        tag.id,
+        updates.name,
+        updates.icon,
+        updates.state
+      );
+      if (response.success && response.data) {
+        setState((prev) => ({
+          ...prev,
+          gameTags: {
+            ...prev.gameTags,
+            dataSource: prev.gameTags.dataSource.map((item) =>
+              item.key === key
+                ? {
+                    ...item,
+                    name: response.data.name,
+                    icon: response.data.icon || item.icon,
+                    state:
+                      response.data.state !== undefined
+                        ? Boolean(response.data.state)
+                        : item.state,
+                    createTime: response.data.updatedAt
+                      ? new Date(response.data.updatedAt).toLocaleString(
+                          "en-US",
+                          {
+                            year: "numeric",
+                            month: "2-digit",
+                            day: "2-digit",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                            hour12: false,
+                          }
+                        ).replace(",", "")
+                      : item.createTime,
+                  }
+                : item
+            ),
+          },
+          dropdowns: {
+            ...prev.dropdowns,
+            tags: prev.dropdowns.tags.map((tag) =>
+              tag.id === response.data.id
+                ? {
+                    ...tag,
+                    name: response.data.name,
+                    icon: response.data.icon || tag.icon,
+                    state:
+                      response.data.state !== undefined
+                        ? Boolean(response.data.state)
+                        : tag.state,
+                  }
+                : tag
+            ),
+          },
+        }));
+        return { success: true };
+      }
+      throw new Error(response.error || "Failed to update tag");
+    } catch (error) {
+      console.error("Error updating game tag:", error);
+      return { success: false, error: error.message || "Failed to update tag" };
+    }
   }, []);
 
   const setGameTagsCurrentPage = useCallback((currentPage) => {
@@ -1437,31 +1591,45 @@ export const AppProvider = ({ children }) => {
     }));
   }, []);
 
-  const confirmDeleteGameTagsItem = useCallback(() => {
-    setState((prev) => {
-      const itemToDelete = prev.gameTags.modals.itemToDelete;
-      if (itemToDelete) {
-        return {
-          ...prev,
-          gameTags: {
-            ...prev.gameTags,
-            dataSource: prev.gameTags.dataSource.filter(
-              (item) => item.key !== itemToDelete.key
-            ),
-            pagination: {
-              ...prev.gameTags.pagination,
-              totalItems: prev.gameTags.pagination.totalItems - 1,
-            },
-            modals: {
-              ...prev.gameTags.modals,
-              isDeleteModalOpen: false,
-              itemToDelete: null,
-            },
-          },
-        };
+  const confirmDeleteGameTagsItem = useCallback(async () => {
+    try {
+      const itemToDelete = stateRef.current.gameTags.modals.itemToDelete;
+      if (!itemToDelete || !itemToDelete.id) {
+        throw new Error("Tag not found");
       }
-      return prev;
-    });
+
+      const response = await apiService.deleteGameTag(itemToDelete.id);
+      if (response.success === false) {
+        throw new Error(response.error || "Failed to delete tag");
+      }
+
+      setState((prev) => ({
+        ...prev,
+        gameTags: {
+          ...prev.gameTags,
+          dataSource: prev.gameTags.dataSource.filter(
+            (item) => item.key !== itemToDelete.key
+          ),
+          pagination: {
+            ...prev.gameTags.pagination,
+            totalItems: Math.max(prev.gameTags.pagination.totalItems - 1, 0),
+          },
+          modals: {
+            ...prev.gameTags.modals,
+            isDeleteModalOpen: false,
+            itemToDelete: null,
+          },
+        },
+        dropdowns: {
+          ...prev.dropdowns,
+          tags: prev.dropdowns.tags.filter((tag) => tag.id !== itemToDelete.id),
+        },
+      }));
+      return { success: true };
+    } catch (error) {
+      console.error("Error deleting game tag:", error);
+      return { success: false, error: error.message || "Failed to delete tag" };
+    }
   }, []);
 
   // Game Manager actions
@@ -1540,6 +1708,7 @@ export const AppProvider = ({ children }) => {
       category: game.extra_gameType || game.category || game.game_type || null, // Prefer extra_gameType for display/filtering
       extra_provider: game.extra_provider || game.provider || null, // Include extra_provider for modal display
       extra_gameType: game.extra_gameType || game.game_type || null, // Include extra_gameType for modal display
+      tags: Array.isArray(game.tags) ? game.tags : [],
       // Store full game data for edit modal
       fullData: game,
     };
@@ -1554,7 +1723,7 @@ export const AppProvider = ({ children }) => {
    * @param {string} providerId - Provider ID filter (optional)
    * @param {string} status - Status filter (optional)
    */
-  const fetchGamesInManager = useCallback(async (page, limit, search, categoryId, providerId, status, startDate, endDate) => {
+  const fetchGamesInManager = useCallback(async (page, limit, search, categoryId, providerId, status, startDate, endDate, tags, visibility) => {
     const currentPage = page !== undefined && page !== null ? page : stateRef.current.gameManager.pagination.currentPage;
     const pageSize = limit !== undefined && limit !== null ? limit : stateRef.current.gameManager.pagination.pageSize;
 
@@ -1577,7 +1746,9 @@ export const AppProvider = ({ children }) => {
         providerId,
         status,
         startDate,
-        endDate
+        endDate,
+        tags,
+        visibility
       );
       
       // Process backend data
@@ -1615,6 +1786,8 @@ export const AppProvider = ({ children }) => {
           status,
           startDate,
           endDate,
+          tags,
+          visibility,
         };
 
         return { success: true, data: mappedGames };
@@ -1879,7 +2052,9 @@ export const AppProvider = ({ children }) => {
         filters.providerId,
         filters.status,
         filters.startDate,
-        filters.endDate
+        filters.endDate,
+        filters.tags,
+        filters.visibility
       );
     } catch (error) {
       console.error('Failed to add game to manager:', error);
@@ -1964,7 +2139,9 @@ export const AppProvider = ({ children }) => {
         filters.providerId,
         filters.status,
         filters.startDate,
-        filters.endDate
+        filters.endDate,
+        filters.tags,
+        filters.visibility
       );
     } catch (error) {
       console.error('Failed to remove game from manager:', error);
@@ -2111,11 +2288,9 @@ export const AppProvider = ({ children }) => {
     closeGameStoreModal,
 
     // Game Tags actions
-    updateGameTagsDataSource,
+    fetchGameTags,
     updateGameTagsItem,
     addGameTagsItem,
-    deleteGameTagsItem,
-    setGameTagsPagination,
     setGameTagsCurrentPage,
     openGameTagsAddEditModal,
     closeGameTagsAddEditModal,
@@ -2180,11 +2355,9 @@ export const AppProvider = ({ children }) => {
     setGameStoreCurrentPage,
     openGameStoreModal,
     closeGameStoreModal,
-    updateGameTagsDataSource,
+    fetchGameTags,
     updateGameTagsItem,
     addGameTagsItem,
-    deleteGameTagsItem,
-    setGameTagsPagination,
     setGameTagsCurrentPage,
     openGameTagsAddEditModal,
     closeGameTagsAddEditModal,

@@ -2,6 +2,11 @@ import React, { useState, useEffect } from "react";
 import { Button, Modal, Input, Select } from "antd";
 import "./TagEditModal.css";
 
+const iconOptions = [
+  { value: "HOT", label: "HOT" },
+  { value: "NEW", label: "NEW" },
+];
+
 const TagEditModal = ({
   open,
   onOk,
@@ -39,11 +44,6 @@ const TagEditModal = ({
     }
   };
 
-  const iconOptions = [
-    { value: "HOT", label: "HOT" },
-    { value: "NEW", label: "NEW" },
-  ];
-
   return (
     <Modal
       open={open}
@@ -55,7 +55,6 @@ const TagEditModal = ({
       maskClosable={false}
     >
       <div className="tag-modal-form">
-        {/* Name Field */}
         <div className="form-item-row form-item-name">
           <label className="form-label">Name</label>
           <Input
@@ -66,7 +65,6 @@ const TagEditModal = ({
           />
         </div>
 
-        {/* Icon Field */}
         <div className="form-item-row form-item-icon">
           <label className="form-label">Icon</label>
           <div className="form-input-wrapper">
@@ -91,7 +89,6 @@ const TagEditModal = ({
           </div>
         </div>
 
-        {/* Buttons */}
         <div className="form-item-row form-item-buttons">
           <div className="modal-buttons">
             <Button className="cancel-button" onClick={handleCancel}>

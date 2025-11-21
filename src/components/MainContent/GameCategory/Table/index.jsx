@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import {
   Table as AntTable,
   Switch,
@@ -6,12 +6,12 @@ import {
   Button,
   Pagination,
   Spin,
-  message,
 } from "antd";
 import AddOrEditModal from "../../../Modal/AddOrEditModal";
 import DeleteModal from "../../../Modal/DeleteModal";
 import { useAppContext } from "../../../../contexts";
-import { getImageURL } from "../../../../services/api";
+import { useNotification } from "../../../../contexts/NotificationContext";
+import apiService, { getImageURL } from "../../../../services/api";
 import "./style.css";
 
 const Table = () => {
@@ -27,6 +27,8 @@ const Table = () => {
     confirmDeleteGameCategoryItem,
     fetchGameCategories,
   } = useAppContext();
+  const { notifySuccess, notifyError } = useNotification();
+  const [checkingDeleteId, setCheckingDeleteId] = useState(null);
 
   const { dataSource, pagination, modals, loading, error } = state.gameCategory;
   const { currentPage, pageSize, totalItems } = pagination;
@@ -135,8 +137,12 @@ const Table = () => {
             Edit
           </p>
           <p 
-            className="delete-link" 
-            onClick={() => openGameCategoryDeleteModal(record)}
+            className={`delete-link ${checkingDeleteId === record.id ? "disabled" : ""}`} 
+            onClick={() => {
+              if (!checkingDeleteId) {
+                handleDeleteRequest(record);
+              }
+            }}
           >
             Delete
           </p>
@@ -153,12 +159,69 @@ const Table = () => {
     openGameCategoryAddEditModal();
   };
 
+  const getCategoryBlockedMessage = useMemo(
+    () => (name, linkedGames) => {
+      const label = name ? `Category "${name}"` : "This category";
+      if (typeof linkedGames === "number" && linkedGames >= 0) {
+        if (linkedGames === 0) {
+          return `${label} cannot be deleted while it is linked to existing games. Remove or reassign those games first.`;
+        }
+        return `${label} cannot be deleted while it is linked to ${linkedGames} game${linkedGames === 1 ? "" : "s"}. Remove or reassign those games first.`;
+      }
+      return `${label} cannot be deleted while it is linked to existing games. Remove or reassign those games first.`;
+    },
+    []
+  );
+
+  const handleDeleteRequest = async (record) => {
+    if (!record?.id) {
+      notifyError("Category not found");
+      return;
+    }
+
+    setCheckingDeleteId(record.id);
+    try {
+      const response = await apiService.checkGameCategoryDeletable(record.id);
+      const deletable =
+        response?.deletable !== false && (response.success || response.success === undefined);
+      if (deletable) {
+        openGameCategoryDeleteModal(record);
+      } else {
+        notifyError(
+          getCategoryBlockedMessage(record?.name, response?.linkedGames)
+        );
+      }
+    } catch (error) {
+      const message = error.message || "Failed to verify category deletion.";
+      const relationBlocked =
+        error.status === 409 ||
+        message.toLowerCase().includes("cannot delete") ||
+        message.toLowerCase().includes("related games");
+      notifyError(
+        relationBlocked
+          ? getCategoryBlockedMessage(record?.name)
+          : message
+      );
+    } finally {
+      setCheckingDeleteId(null);
+    }
+  };
+
   const handleDeleteOk = async () => {
     const result = await confirmDeleteGameCategoryItem();
     if (result.success) {
-      message.success("Category deleted successfully");
+      notifySuccess("Deletion was successful", "The category has been removed.");
     } else {
-      message.error(result.error || "Failed to delete category");
+      const relationBlocked =
+        result.status === 409 ||
+        (result.error && result.error.toLowerCase().includes("cannot delete category"));
+      if (relationBlocked) {
+        notifyError(
+          getCategoryBlockedMessage(modals?.itemToDelete?.name)
+        );
+      } else {
+        notifyError(result.error || "Failed to delete category");
+      }
     }
   };
 
@@ -169,7 +232,7 @@ const Table = () => {
 
   const handleOk = async (data) => {
     if (!data.name || data.name.trim() === "") {
-      message.error("Category name is required");
+      notifyError("Category name is required");
       return;
     }
 
@@ -182,10 +245,10 @@ const Table = () => {
           visibility: data.visibility,
         });
         if (result.success) {
-          message.success("Category updated successfully");
+          notifySuccess("Category updated successfully", `"${data.name}" has been saved.`);
           closeGameCategoryAddEditModal();
         } else {
-          message.error(result.error || "Failed to update category");
+          notifyError(result.error || "Failed to update category");
         }
       } else {
         // Add new item
@@ -197,15 +260,15 @@ const Table = () => {
         };
         const result = await addGameCategoryItem(newItem);
         if (result.success) {
-          message.success("Category created successfully");
+          notifySuccess("Added correctly.", `"${data.name}" is now available for use.`);
           closeGameCategoryAddEditModal();
         } else {
-          message.error(result.error || "Failed to create category");
+          notifyError(result.error || "Failed to create category");
         }
       }
     } catch (error) {
       console.error("Error saving category:", error);
-      message.error(error.message || "Failed to save category");
+      notifyError(error.message || "Failed to save category");
     }
   };
 
