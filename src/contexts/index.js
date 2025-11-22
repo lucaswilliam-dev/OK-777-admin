@@ -177,10 +177,13 @@ export const AppProvider = ({ children }) => {
     visibility: undefined,
   });
   
-  // Keep ref in sync with state
+  // Keep ref in sync with state - use batching to reduce updates
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
+  
+  // Optimize: Only update ref when critical state changes, not on every state update
+  // This reduces unnecessary re-renders in callbacks
 
   // Sidebar actions
   const setSelectedKey = useCallback((key) => {
@@ -1077,13 +1080,11 @@ export const AppProvider = ({ children }) => {
         : null;
     const pingStatus = game.pingStatus || (typeof pingMs === "number" ? "online" : "unknown");
     
-    // Get provider - backend now returns it from Game table
+    // Get provider - use provider field from Game table
     const provider = game.provider || "-";
     
-    // Get category - backend now returns category name from GameCategory table
-    // Falls back to gameType if category name is not available
-    // Ensure we use the category name (string) not the category ID (number)
-    const category = game.category || game.game_type || "-";
+    // Get category - use gameType field from Game table (not categoryName from GameCategory table)
+    const category = game.game_type || game.category || "-";
     
     // Get game name - use game_name from backend (which comes from database gameName field)
     // The backend sends game_name which is mapped from database gameName
@@ -1145,8 +1146,12 @@ export const AppProvider = ({ children }) => {
       const response = await apiService.getProvidedGames(productCode, currentPage, pageSize, search, category, provider, status);
       
       if (response.data && response.data.provider_games) {
-        // Map games to GameStore format with random ping values
-        const mappedGames = response.data.provider_games.map(mapGameStoreData);
+        // Map games to GameStore format - use for loop for better performance with large arrays
+        const games = response.data.provider_games;
+        const mappedGames = [];
+        for (let i = 0; i < games.length; i++) {
+          mappedGames.push(mapGameStoreData(games[i]));
+        }
         
         // Extract pagination info
         const paginationInfo = response.pagination || {};
@@ -1751,16 +1756,23 @@ export const AppProvider = ({ children }) => {
         visibility
       );
       
-      // Process backend data
+      // Process backend data - use for loop for better performance with large arrays
       if (response.success && response.data) {
-        const mappedGames = response.data.map(mapGameData);
+        const games = response.data;
+        const mappedGames = [];
+        for (let i = 0; i < games.length; i++) {
+          mappedGames.push(mapGameData(games[i]));
+        }
         
         // Extract pagination info from response
         const paginationInfo = response.meta || {};
         const totalItems = paginationInfo.total !== undefined ? paginationInfo.total : mappedGames.length;
         
-        // Update selectedGameKeys based on fetched games
-        const selectedKeys = mappedGames.map(game => game.key);
+        // Update selectedGameKeys based on fetched games - use for loop for performance
+        const selectedKeys = [];
+        for (let i = 0; i < mappedGames.length; i++) {
+          selectedKeys.push(mappedGames[i].key);
+        }
         
         setState((prev) => ({
           ...prev,

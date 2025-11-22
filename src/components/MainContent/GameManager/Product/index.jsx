@@ -1,10 +1,10 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, memo, useMemo, useCallback } from "react";
 import { Button, Modal } from "antd";
 import { PlayCircleOutlined, EditOutlined } from "@ant-design/icons";
 import { getImageURL } from "../../../../services/api";
 import "../GameProducts/style.css";
 
-const Product = ({
+const Product = memo(({
   image = "/cat.jpg",
   cnName = "糖果大战",
   enName = "Candy Wars",
@@ -32,7 +32,7 @@ const Product = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cnName, enName]);
 
-  const handleReadMore = (label, value) => {
+  const handleReadMore = useCallback((label, value) => {
     Modal.info({
       title: `${label} Name`,
       content: <div className="read-more-content">{value}</div>,
@@ -40,10 +40,10 @@ const Product = ({
       okText: "Close",
       className: "product-read-more-modal",
     });
-  };
+  }, []);
 
-  // Get the properly formatted image URL
-  const imageUrl = image ? getImageURL(image) : "/cat.jpg";
+  // Get the properly formatted image URL - memoized to prevent recalculation
+  const imageUrl = useMemo(() => image ? getImageURL(image) : "/cat.jpg", [image]);
 
   return (
     <div className="product">
@@ -104,6 +104,8 @@ const Product = ({
       </div>
     </div>
   );
-};
+});
+
+Product.displayName = 'Product';
 
 export default Product;

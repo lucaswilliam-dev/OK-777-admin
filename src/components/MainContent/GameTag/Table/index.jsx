@@ -37,12 +37,21 @@ const GameTagTable = () => {
   const { isAddEditModalOpen, isDeleteModalOpen, editingItem } = modals;
   const hasFetchedRef = useRef(false);
 
+  // Only fetch once on mount if we don't have data
   useEffect(() => {
-    if (dataSource.length === 0 && !loading && !error && !hasFetchedRef.current) {
+    // If we already have data, don't fetch
+    if (dataSource.length > 0) {
+      hasFetchedRef.current = true;
+      return;
+    }
+    
+    // Only fetch if we haven't fetched yet and we're not currently loading
+    if (!hasFetchedRef.current && !loading) {
       hasFetchedRef.current = true;
       fetchGameTags();
     }
-  }, [dataSource.length, loading, error, fetchGameTags]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount
 
   const columns = useMemo(
     () => [
@@ -269,7 +278,7 @@ const GameTagTable = () => {
           <AntTable
             columns={columns}
             dataSource={dataSource}
-            loading={loading && dataSource.length > 0}
+            loading={false}
             pagination={false}
             className="game-category-table"
             rowClassName="table-row"

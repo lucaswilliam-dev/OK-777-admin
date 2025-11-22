@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   Button,
   Pagination,
@@ -23,7 +23,6 @@ const GameProducts = () => {
     state,
     setGameManagerCurrentPage,
     fetchGamesInManager,
-    fetchDropdownData,
     updateGameManagerItem,
   } = useAppContext();
 
@@ -31,7 +30,7 @@ const GameProducts = () => {
 
   const { dataSource, loading, error, pagination } = state.gameManager;
   const { currentPage, pageSize } = pagination;
-  const { dropdowns } = state;
+  const { dropdowns, gameCategory, gameProvider } = state;
 
   // Filter states
   const [gameName, setGameName] = useState("");
@@ -209,7 +208,15 @@ const GameProducts = () => {
     ]
   );
 
+  // Optimize: Debounce filter changes to prevent excessive API calls
+  const filterTimeoutRef = useRef(null);
+  
   useEffect(() => {
+    // Clear any pending filter application
+    if (filterTimeoutRef.current) {
+      clearTimeout(filterTimeoutRef.current);
+    }
+
     const { startDate: startDateIso, endDate: endDateIso } = getDateRangeISO(dateRange);
     const nextFiltersSnapshot = {
       category: normalizeFilterValue(category),
@@ -236,8 +243,17 @@ const GameProducts = () => {
     prevFiltersRef.current = nextFiltersSnapshot;
 
     if (hasChanged) {
-      applyFilters(true);
+      // Debounce filter application to reduce API calls
+      filterTimeoutRef.current = setTimeout(() => {
+        applyFilters(true);
+      }, 300); // 300ms debounce
     }
+
+    return () => {
+      if (filterTimeoutRef.current) {
+        clearTimeout(filterTimeoutRef.current);
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     category,
@@ -252,7 +268,8 @@ const GameProducts = () => {
   ]);
 
   // Server-side pagination - dataSource already contains paginated results
-  const paginatedDataSource = dataSource;
+  // Memoize to prevent unnecessary re-renders
+  const paginatedDataSource = useMemo(() => dataSource, [dataSource]);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -264,82 +281,64 @@ const GameProducts = () => {
   // GameManager now only shows games that were added from GameStore
   // No need to fetch from backend - games are managed via state
   
-  const [categoryOptions, setCategoryOptions] = useState([
-    { value: "All", label: "All" },
-  ]);
-  const [providerOptions, setProviderOptions] = useState([
-    { value: "All", label: "All" },
-  ]);
-  const [tagOptions, setTagOptions] = useState([{ value: "All", label: "All" }]);
+  // Use data from context directly - no API calls needed!
+  // Categories from gameCategory.dataSource (GameCategories table)
+  // Providers from gameProvider.dataSource (Product table)
+  // Tags from dropdowns.tags (GameTags table)
+  // Create stable string keys to prevent unnecessary re-renders
+  const categoryDataKey = useMemo(() => {
+    const categories = gameCategory.dataSource || [];
+    return `${categories.length}-${categories.map(c => c.name).sort().join(',')}`;
+  }, [gameCategory.dataSource]);
 
-  useEffect(() => {
-    const loadDropdownData = async () => {
-      if (
-        dropdowns.categories.length > 0 &&
-        dropdowns.providers.length > 0 &&
-        dropdowns.tags.length > 0
-      ) {
-        const categoryOpts = [
-          { value: "All", label: "All" },
-          ...dropdowns.categories.map((cat) => ({
-            value: cat.name,
-            label: cat.name,
-          })),
-        ];
-        const providerOpts = [
-          { value: "All", label: "All" },
-          ...dropdowns.providers.map((prov) => ({
-            value: prov,
-            label: prov,
-          })),
-        ];
-        const tagOpts = [
-          { value: "All", label: "All" },
-          ...dropdowns.tags
-            .filter((tag) => tag.state !== false)
-            .map((tag) => ({
-              value: tag.id,
-              label: tag.name,
-            })),
-        ];
-        setCategoryOptions(categoryOpts);
-        setProviderOptions(providerOpts);
-        setTagOptions(tagOpts);
-      } else {
-        const result = await fetchDropdownData();
-        if (result.success) {
-          const categoryOpts = [
-            { value: "All", label: "All" },
-            ...result.categories.map((cat) => ({
-              value: cat.name,
-              label: cat.name,
-            })),
-          ];
-          const providerOpts = [
-            { value: "All", label: "All" },
-            ...result.providers.map((prov) => ({
-              value: prov,
-              label: prov,
-            })),
-          ];
-          const tagOpts = [
-            { value: "All", label: "All" },
-            ...(result.tags || [])
-              .filter((tag) => tag.state !== false)
-              .map((tag) => ({
-                value: tag.id,
-                label: tag.name,
-              })),
-          ];
-          setCategoryOptions(categoryOpts);
-          setProviderOptions(providerOpts);
-          setTagOptions(tagOpts);
-        }
-      }
-    };
+  const providerDataKey = useMemo(() => {
+    const providers = gameProvider.dataSource || [];
+    const uniqueProviders = [...new Set(
+      providers.map((p) => p.provider || p.name).filter(Boolean)
+    )].sort();
+    return `${uniqueProviders.length}-${uniqueProviders.join(',')}`;
+  }, [gameProvider.dataSource]);
 
-    loadDropdownData();
-  }, [fetchDropdownData, dropdowns.categories, dropdowns.providers, dropdowns.tags]);
+  const categoryOptions = useMemo(() => {
+    const categories = gameCategory.dataSource || [];
+    return [
+      { value: "All", label: "All" },
+      ...categories.map((cat) => ({
+        value: cat.name,
+        label: cat.name,
+      })),
+    ];
+  }, [categoryDataKey]);
+
+  const providerOptions = useMemo(() => {
+    const providers = gameProvider.dataSource || [];
+    // Extract unique provider values from Product table
+    const uniqueProviders = [...new Set(
+      providers
+        .map((p) => p.provider || p.name)
+        .filter(Boolean)
+    )].sort();
+    return [
+      { value: "All", label: "All" },
+      ...uniqueProviders.map((prov) => ({
+        value: prov,
+        label: prov,
+      })),
+    ];
+  }, [providerDataKey]);
+
+  const tagOptions = useMemo(() => {
+    const tags = dropdowns.tags || [];
+    return [
+      { value: "All", label: "All" },
+      ...tags
+        .filter((tag) => tag.state !== false)
+        .map((tag) => ({
+          value: tag.id,
+          label: tag.name,
+        })),
+    ];
+  }, [dropdowns.tags]);
 
   const visibilityOptions = [
     { value: "All", label: "All" },
@@ -717,7 +716,6 @@ const GameProducts = () => {
               onChange={setCategory}
               className="filter-select"
               options={categoryOptions}
-            loading={dropdowns.loading}
             />
           </div>
           <div className="filter-item">
@@ -727,7 +725,6 @@ const GameProducts = () => {
               onChange={setProvider}
               className="filter-select filter-select1"
               options={providerOptions}
-            loading={dropdowns.loading}
             />
           </div>
           <div className="filter-item">

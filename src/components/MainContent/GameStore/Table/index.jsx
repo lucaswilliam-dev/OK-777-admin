@@ -264,14 +264,23 @@ const Table = () => {
     ];
   }, []);
 
+  // Optimize: Memoize table data processing to prevent recalculation on every render
   const tableData = useMemo(() => {
+    if (!dataSource || dataSource.length === 0) return [];
+    
     // Status filtering is now done at backend level, so we just map the data
-    let mapped = (dataSource || []).map((item) => {
+    // Use for loop for better performance with large arrays (faster than map)
+    const mapped = [];
+    const sourceLength = dataSource.length;
+    
+    for (let i = 0; i < sourceLength; i++) {
+      const item = dataSource[i];
       const statusCode = (item.status || "")
         .toString()
         .toUpperCase()
         .trim();
-      return {
+      
+      const processedItem = {
         ...item,
         provider: item.provider || "-",
         category: item.category || "-",
@@ -284,20 +293,20 @@ const Table = () => {
         status: statusCode,
         statusLabel: STATUS_LABELS[statusCode] || statusCode || "Unknown",
       };
-    });
-
-    // Apply client-side ping filtering
-    if (pingFilter !== "All") {
-      mapped = mapped.filter((item) => {
-        const pingStatus = item.pingStatus || (item.pingMs !== null ? "online" : "offline");
-        return pingStatus === pingFilter;
-      });
+      
+      // Apply client-side ping filtering during mapping (more efficient)
+      if (pingFilter === "All" || processedItem.pingStatus === pingFilter || 
+          (pingFilter === "online" && processedItem.pingMs !== null) ||
+          (pingFilter === "offline" && processedItem.pingMs === null)) {
+        mapped.push(processedItem);
+      }
     }
 
     return mapped;
   }, [dataSource, pingFilter]);
 
-  const columns = [
+  // Memoize columns to prevent recreation on every render - critical for performance
+  const columns = useMemo(() => [
     {
       title: "GameName",
       dataIndex: "name",
@@ -427,7 +436,7 @@ const Table = () => {
         }
       },
     },
-  ];
+  ], [isGameInManager, addGameToManager, removeGameFromManager]);
 
   const handlePageChange = async (page) => {
     // Optimistic update: Change button color first by updating page number immediately
