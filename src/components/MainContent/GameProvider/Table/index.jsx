@@ -194,8 +194,9 @@ const Table = () => {
       if (deletable) {
         openGameProviderDeleteModal(record);
       } else {
+        // Use linkedGamesInManager for the correct count of games blocking deletion
         notifyError(
-          getProviderBlockedMessage(record?.name, response?.linkedGames)
+          getProviderBlockedMessage(record?.name, response?.linkedGamesInManager)
         );
       }
     } catch (error) {

@@ -187,8 +187,9 @@ const Table = () => {
       if (deletable) {
         openGameCategoryDeleteModal(record);
       } else {
+        // Use linkedGamesInManager for the correct count of games blocking deletion
         notifyError(
-          getCategoryBlockedMessage(record?.name, response?.linkedGames)
+          getCategoryBlockedMessage(record?.name, response?.linkedGamesInManager)
         );
       }
     } catch (error) {
