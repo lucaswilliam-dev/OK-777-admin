@@ -12,6 +12,8 @@ import { ExclamationCircleFilled } from "@ant-design/icons";
 import TagEditModal from "../../../Modal/TagEditModal";
 import { useAppContext } from "../../../../contexts";
 import { useNotification } from "../../../../contexts/NotificationContext";
+import TableSkeleton from "../../../Skeleton/TableSkeleton";
+import ProgressBar from "../../../Skeleton/ProgressBar";
 import "./style.css";
 
 const iconOptions = [
@@ -239,19 +241,11 @@ const GameTagTable = () => {
       </div>
 
       <div className="line"></div>
-      <div className="table-wrapper">
+      <ProgressBar loading={loading && dataSource.length > 0} />
+      <div className={`table-wrapper ${loading && dataSource.length > 0 ? 'loading-overlay loading' : ''}`}>
         {loading && dataSource.length === 0 ? (
-          // Show spinner while loading on initial load
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              minHeight: "400px",
-            }}
-          >
-            <Spin size="large" tip="Loading tags..." />
-          </div>
+          // Show skeleton loader when no data exists
+          <TableSkeleton rows={8} columns={4} />
         ) : error ? (
           // Show error state
           <div

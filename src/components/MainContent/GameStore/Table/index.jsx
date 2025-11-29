@@ -9,6 +9,8 @@ import StoreAdd from "../../../Modal/StoreAdd";
 import StoreMove from "../../../Modal/StoreMove";
 import { useAppContext } from "../../../../contexts";
 import api from "../../../../services/api";
+import TableSkeleton from "../../../Skeleton/TableSkeleton";
+import ProgressBar from "../../../Skeleton/ProgressBar";
 import "./style.css";
 
 const STATUS_LABELS = {
@@ -789,19 +791,11 @@ const Table = () => {
         </Button>
       </div>
 
-      <div className={`table-wrapper ${loading && !isInitialLoading ? 'loading' : ''}`}>
+      <ProgressBar loading={loading && !isInitialLoading} />
+      <div className={`table-wrapper ${loading && !isInitialLoading && dataSource.length > 0 ? 'loading-overlay loading' : ''}`}>
         {(loading || isInitialLoading) && dataSource.length === 0 ? (
-          // Show spinner while loading or during initial load
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              minHeight: "400px",
-            }}
-          >
-            <Spin size="large" tip="Loading games..." />
-          </div>
+          // Show skeleton loader during initial load or when no data exists
+          <TableSkeleton rows={10} columns={7} />
         ) : error ? (
           <div
             style={{

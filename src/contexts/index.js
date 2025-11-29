@@ -2198,6 +2198,71 @@ export const AppProvider = ({ children }) => {
     return state.gameManager.selectedGameKeys.includes(gameKey);
   }, [state.gameManager.selectedGameKeys]);
 
+  // Load all initial data for the panel
+  const loadAllInitialData = useCallback(async () => {
+    console.log('🔄 Loading all initial panel data...');
+    
+    try {
+      // Load all data in parallel for better performance
+      const [
+        categoriesResult,
+        providersResult,
+        tagsResult,
+        dropdownResult,
+        filtersResult,
+        gamesStoreResult,
+        gamesManagerResult
+      ] = await Promise.allSettled([
+        // Core data
+        fetchGameCategories(),
+        fetchGameProviders(1, 10), // First page of providers
+        fetchGameTags(),
+        
+        // Dropdown/filter data
+        fetchDropdownData(true), // Force refresh to get latest
+        fetchGameFilters(true), // Force refresh to get latest
+        
+        // Game data (first page only to avoid loading too much)
+        fetchGamesForStore(undefined, 1, 10, undefined, undefined, undefined, undefined),
+        fetchGamesInManager(1, 21, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined),
+      ]);
+
+      // Log results
+      const results = {
+        categories: categoriesResult.status === 'fulfilled' ? '✅' : '❌',
+        providers: providersResult.status === 'fulfilled' ? '✅' : '❌',
+        tags: tagsResult.status === 'fulfilled' ? '✅' : '❌',
+        dropdowns: dropdownResult.status === 'fulfilled' ? '✅' : '❌',
+        filters: filtersResult.status === 'fulfilled' ? '✅' : '❌',
+        gameStore: gamesStoreResult.status === 'fulfilled' ? '✅' : '❌',
+        gameManager: gamesManagerResult.status === 'fulfilled' ? '✅' : '❌',
+      };
+
+      console.log('📊 Initial data loading complete:', results);
+      
+      // Log any errors
+      [
+        categoriesResult,
+        providersResult,
+        tagsResult,
+        dropdownResult,
+        filtersResult,
+        gamesStoreResult,
+        gamesManagerResult
+      ].forEach((result, index) => {
+        if (result.status === 'rejected') {
+          const names = ['Categories', 'Providers', 'Tags', 'Dropdowns', 'Filters', 'Game Store', 'Game Manager'];
+          console.error(`❌ Failed to load ${names[index]}:`, result.reason);
+        }
+      });
+
+      return { success: true, results };
+    } catch (error) {
+      console.error('❌ Error loading initial data:', error);
+      return { success: false, error: error.message };
+    }
+  }, [fetchGameCategories, fetchGameProviders, fetchGameTags, fetchDropdownData, fetchGameFilters, fetchGamesForStore, fetchGamesInManager]);
+
   // Generic actions for other game modules (can be extended)
   const updateModuleDataSource = useCallback((moduleName, dataSource) => {
     setState((prev) => ({
@@ -2333,6 +2398,9 @@ export const AppProvider = ({ children }) => {
     fetchDropdownData,
     refreshProvidersInCache,
     fetchGameFilters,
+
+    // Initial data loading
+    loadAllInitialData,
   }), [
     state,
     setSelectedKey,
@@ -2394,7 +2462,47 @@ export const AppProvider = ({ children }) => {
     fetchDropdownData,
     refreshProvidersInCache,
     fetchGameFilters,
+    loadAllInitialData,
   ]);
+
+  // Load all initial data when app mounts and user is authenticated
+  useEffect(() => {
+    const checkAuthAndLoadData = () => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        // User is authenticated, check if we need to load data
+        const hasAnyData = 
+          stateRef.current.gameCategory.dataSource.length > 0 ||
+          stateRef.current.gameProvider.dataSource.length > 0 ||
+          stateRef.current.gameTags.dataSource.length > 0;
+        
+        // Only load if no data exists yet
+        if (!hasAnyData) {
+          console.log('🔐 User authenticated, loading all initial data...');
+          loadAllInitialData();
+        }
+      }
+    };
+
+    // Check immediately
+    checkAuthAndLoadData();
+
+    // Also listen for storage changes (token added after login)
+    const handleStorageChange = (e) => {
+      if (e.key === 'token' && e.newValue) {
+        // Token was added (user just logged in)
+        setTimeout(() => {
+          checkAuthAndLoadData();
+        }, 100); // Small delay to ensure state is ready
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [loadAllInitialData]);
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };

@@ -5,6 +5,8 @@ import DeleteModal from "../../../Modal/DeleteModal";
 import { useAppContext } from "../../../../contexts";
 import apiService, { getImageURL } from "../../../../services/api";
 import { useNotification } from "../../../../contexts/NotificationContext";
+import TableSkeleton from "../../../Skeleton/TableSkeleton";
+import ProgressBar from "../../../Skeleton/ProgressBar";
 import "./style.css";
 
 const Table = () => {
@@ -307,19 +309,11 @@ const Table = () => {
       </div>
 
       <div className="line"></div>
-      <div className="table-wrapper">
+      <ProgressBar loading={loading && dataSource.length > 0} />
+      <div className={`table-wrapper ${loading && dataSource.length > 0 ? 'loading-overlay loading' : ''}`}>
         {loading && dataSource.length === 0 ? (
-          // Only show spinner if we have no data
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              minHeight: "400px",
-            }}
-          >
-            <Spin size="large" tip="Loading providers..." />
-          </div>
+          // Show skeleton loader when no data exists
+          <TableSkeleton rows={8} columns={4} />
         ) : error ? (
           <div
             style={{

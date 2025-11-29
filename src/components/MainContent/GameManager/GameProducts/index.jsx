@@ -14,6 +14,8 @@ import { useAppContext } from "../../../../contexts";
 import { useNotification } from "../../../../contexts/NotificationContext";
 import Product from "../Product";
 import apiService from "../../../../services/api";
+import GameCardSkeleton from "../../../Skeleton/GameCardSkeleton";
+import ProgressBar from "../../../Skeleton/ProgressBar";
 import "./style.css";
 
 const { RangePicker } = DatePicker;
@@ -772,19 +774,11 @@ const GameProducts = () => {
         </div>
       </div>
       <div className="line"></div>
-      <div className="table-wrapper1">
+      <ProgressBar loading={loading && dataSource.length > 0} />
+      <div className={`table-wrapper1 ${loading && dataSource.length > 0 ? 'loading-overlay loading' : ''}`}>
         {loading && dataSource.length === 0 ? (
-          // Only show spinner if we have no data
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              minHeight: "400px",
-            }}
-          >
-            <Spin size="large" tip="Loading games..." />
-          </div>
+          // Show skeleton loader when no data exists - use pageSize to match expected items
+          <GameCardSkeleton count={pageSize || 21} />
         ) : error ? (
           <div
             style={{

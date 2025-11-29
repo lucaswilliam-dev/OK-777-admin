@@ -872,6 +872,8 @@
   min-height: 0;
   gap: 15px;
   padding: 5px;
+  position: relative;
+  transition: opacity 0.3s ease-in-out;
 }
 
 .products {
